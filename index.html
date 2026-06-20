@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HASH</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <aside id="sidebar">
+      <h1 id="app-title">HASH</h1>
+      <nav id="front-list"></nav>
+    </aside>
+
+    <main id="main">
+      <header id="main-header">
+        <div id="main-header-top">
+          <div>
+            <h2 id="active-front-name">—</h2>
+            <p id="active-front-description"></p>
+          </div>
+          <div id="sync-controls">
+            <button type="button" id="sync-button">Actualizar desde fuente externa</button>
+            <p id="sync-status" aria-live="polite"></p>
+          </div>
+        </div>
+      </header>
+
+      <section id="message-list" aria-live="polite"></section>
+
+      <footer id="composer">
+        <textarea id="message-input" placeholder="Escribí algo para registrar en este frente..." rows="3"></textarea>
+        <button type="button" id="message-submit">Guardar</button>
+      </footer>
+    </main>
+
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>
