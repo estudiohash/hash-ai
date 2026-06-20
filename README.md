@@ -63,3 +63,4 @@ Los frentes se crean y administran directamente en Google Sheets. HASH los lee y
 4. Recuperar información.
 
 La arquitectura futura se decidirá cuando existan meses de información acumulada y necesidades reales detectadas.
+# hash-ai
