@@ -1,6 +1,7 @@
 /**
- * style.css
- * Estilos de HASH. Diseño oscuro, minimalista, funcional.
+ * style.css — HASH
+ * Paleta oficial: Lime #C7F532 · Black #0E0E0E · Graphite #1A1A1A
+ * Regla: 90% negro · 8% grafito · 2% lime
  */
 
 * {
@@ -17,7 +18,7 @@ body {
   font-size: 16px;
   line-height: 1.4;
   color: #e8e8e8;
-  background: #1a1a1a;
+  background: #0E0E0E;
 }
 
 #app {
@@ -30,48 +31,61 @@ body {
 #sidebar {
   width: 200px;
   flex-shrink: 0;
-  border-right: 1px solid #2e2e2e;
-  padding: 20px 14px;
+  border-right: 1px solid #222;
+  padding: 24px 14px;
   overflow-y: auto;
-  background: #141414;
+  background: #0E0E0E;
+}
+
+#app-logo {
+  margin: 0 0 20px -10px;
+}
+
+#logo-img {
+  width: 160px;
+  height: auto;
+  display: block;
 }
 
 #app-title {
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #fff;
-  margin: 0 0 20px 0;
+  color: #C7F532;
+  margin: 0 0 28px 0;
 }
 
 #front-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .front-item {
   text-align: left;
   background: none;
   border: none;
-  border-radius: 3px;
-  padding: 7px 10px;
-  font-size: 0.88rem;
-  color: #999;
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: #555;
   cursor: pointer;
   width: 100%;
+  transition: color 0.1s;
 }
 
 .front-item:hover {
-  background: #222;
-  color: #e8e8e8;
+  color: #aaa;
+  background: none;
 }
 
 .front-item--active {
-  background: #252525;
-  color: #fff;
+  color: #C7F532;
   font-weight: 600;
+  background: none;
 }
 
 /* ---------- Main ---------- */
@@ -81,12 +95,12 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: #1a1a1a;
+  background: #0E0E0E;
 }
 
 #main-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #2e2e2e;
+  padding: 20px 28px;
+  border-bottom: 1px solid #1a1a1a;
 }
 
 #main-header-top {
@@ -98,15 +112,17 @@ body {
 
 #active-front-name {
   margin: 0 0 3px 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   color: #fff;
 }
 
 #active-front-description {
   margin: 0;
-  color: #666;
-  font-size: 0.85rem;
+  color: #444;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
 }
 
 #sync-controls {
@@ -115,30 +131,33 @@ body {
 }
 
 #sync-button {
-  padding: 5px 11px;
-  border: 1px solid #333;
-  border-radius: 3px;
+  padding: 5px 12px;
+  border: 1px solid #222;
+  border-radius: 2px;
   background: transparent;
-  color: #888;
-  font-size: 0.8rem;
+  color: #444;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
   cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
 }
 
 #sync-button:hover {
-  background: #222;
-  color: #ccc;
+  color: #888;
+  border-color: #333;
 }
 
 #sync-button:disabled {
   cursor: wait;
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 #sync-status {
-  margin: 5px 0 0 0;
-  font-size: 0.75rem;
-  color: #555;
+  margin: 6px 0 0 0;
+  font-size: 0.72rem;
+  color: #333;
   min-height: 1em;
+  letter-spacing: 0.02em;
 }
 
 #sync-status[data-state="error"] {
@@ -146,11 +165,11 @@ body {
 }
 
 #sync-status[data-state="success"] {
-  color: #27ae60;
+  color: #C7F532;
 }
 
 #sync-status[data-state="loading"] {
-  color: #666;
+  color: #444;
 }
 
 /* ---------- Message list ---------- */
@@ -158,89 +177,117 @@ body {
 #message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 24px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .message-list-empty {
-  color: #444;
+  color: #2a2a2a;
   font-style: italic;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .message-item {
-  border: 1px solid #272727;
-  border-radius: 4px;
-  padding: 10px 14px;
-  background: #1e1e1e;
+  border: 1px solid #1a1a1a;
+  border-radius: 2px;
+  padding: 12px 14px;
+  background: #111;
 }
 
 .message-item-date {
   display: block;
-  font-size: 0.72rem;
-  color: #555;
-  margin-bottom: 5px;
+  font-size: 0.68rem;
+  color: #333;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .message-item-text {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #d0d0d0;
-  font-size: 0.92rem;
+  color: #bbb;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 /* ---------- Composer ---------- */
 
 #composer {
-  border-top: 1px solid #2e2e2e;
-  padding: 12px 24px;
+  border-top: 1px solid #1a1a1a;
+  padding: 14px 28px;
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  background: #0E0E0E;
 }
 
 #message-input {
   flex: 1;
-  resize: vertical;
+  resize: none;
   font-family: inherit;
-  font-size: 0.92rem;
-  padding: 9px 12px;
-  border: 1px solid #2e2e2e;
-  border-radius: 4px;
-  background: #141414;
-  color: #e8e8e8;
+  font-size: 0.88rem;
+  padding: 10px 12px;
+  border: 1px solid #1e1e1e;
+  border-radius: 2px;
+  background: #111;
+  color: #ccc;
   min-height: 60px;
+  transition: border-color 0.1s;
 }
 
 #message-input::placeholder {
-  color: #444;
+  color: #2e2e2e;
 }
 
 #message-input:focus {
   outline: none;
-  border-color: #444;
+  border-color: #2a2a2a;
 }
 
 #message-submit {
-  padding: 9px 18px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 4px;
-  background: #e8e8e8;
-  color: #111;
-  font-size: 0.92rem;
-  font-weight: 600;
+  border-radius: 2px;
+  background: #C7F532;
+  color: #0E0E0E;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
   white-space: nowrap;
+  transition: opacity 0.1s;
 }
 
 #message-submit:hover {
-  background: #fff;
+  opacity: 0.88;
 }
 
 #message-submit:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: wait;
+}
+
+/* ---------- Nuevo frente ---------- */
+
+.front-add {
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #333;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 12px;
+  letter-spacing: 0.03em;
+  transition: color 0.1s;
+}
+
+.front-add:hover {
+  color: #C7F532;
 }

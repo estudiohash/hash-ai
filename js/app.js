@@ -1,54 +1,46 @@
 /**
  * app.js — HASH
  * Fuente de verdad: Google Sheets vía Apps Script.
- * localStorage: caché de lectura rápida y respaldo ante fallos momentáneos.
+ * localStorage: caché ante fallos momentáneos.
  */
-
-// ── Configuración ──────────────────────────────────────────────────────────
 
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbykkY8Cc9_iLQ5F5cGiL3iFXAol_HNIc8TOCia547S2NHAuboN0Bc745zS4KUjF0yjG3Q/exec';
 
-const FRONTS = [
-  { id: 'personal',   name: 'Personal',   description: 'Reflexiones y vida personal.' },
-  { id: 'hash-ai',    name: 'HASH AI',    description: 'Desarrollo del proyecto HASH.' },
-  { id: 'method',     name: 'Method',     description: 'Procesos, metodologías y forma de trabajo.' },
-  { id: 'calambre',   name: 'CALAMBRE',   description: '' },
-  { id: 'banger',     name: 'BANGER',     description: '' },
-];
-
 // ── Estado ─────────────────────────────────────────────────────────────────
 
-let activeFrontId = localStorage.getItem('hash_active_front') || FRONTS[0].id;
-let messages = [];  // mensajes del frente activo, cargados desde Sheets o caché
+let fronts = [];
+let activeFrontId = localStorage.getItem('hash_active_front') || null;
+let messages = [];
 
-// ── Caché local ────────────────────────────────────────────────────────────
+// ── Caché ──────────────────────────────────────────────────────────────────
 
-function cacheGet(frontId) {
-  try {
-    return JSON.parse(localStorage.getItem('hash_msgs_' + frontId)) || [];
-  } catch { return []; }
+function cacheGetFronts() {
+  try { return JSON.parse(localStorage.getItem('hash_fronts')) || []; } catch { return []; }
 }
-
-function cacheSet(frontId, msgs) {
-  try {
-    localStorage.setItem('hash_msgs_' + frontId, JSON.stringify(msgs));
-  } catch {}
+function cacheSetFronts(f) {
+  try { localStorage.setItem('hash_fronts', JSON.stringify(f)); } catch {}
+}
+function cacheGetMessages(frontId) {
+  try { return JSON.parse(localStorage.getItem('hash_msgs_' + frontId)) || []; } catch { return []; }
+}
+function cacheSetMessages(frontId, msgs) {
+  try { localStorage.setItem('hash_msgs_' + frontId, JSON.stringify(msgs)); } catch {}
 }
 
 // ── Red ────────────────────────────────────────────────────────────────────
 
-async function fetchMessages(frontId) {
-  const res = await fetch(APPS_SCRIPT_URL + '?front=' + encodeURIComponent(frontId));
+async function apiFetch(url) {
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Error ' + res.status);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'Error desconocido');
-  return data.messages; // [{ id, front, message, created_at }, ...]
+  return data;
 }
 
-async function postMessage(msg) {
+async function apiPost(body) {
   const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'saveMessage', data: msg }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Error ' + res.status);
   const data = await res.json();
@@ -58,17 +50,37 @@ async function postMessage(msg) {
 
 // ── Lógica ─────────────────────────────────────────────────────────────────
 
-async function syncFront(frontId) {
-  setSyncStatus('loading', 'Actualizando...');
+async function loadFronts() {
   try {
-    messages = await fetchMessages(frontId);
-    cacheSet(frontId, messages);
-    setSyncStatus('success', messages.length + ' mensaje(s) cargado(s).');
-  } catch (err) {
-    messages = cacheGet(frontId);
-    setSyncStatus('error', 'Sin conexión. Mostrando caché local.');
+    const data = await apiFetch(APPS_SCRIPT_URL);
+    fronts = data.fronts || [];
+    cacheSetFronts(fronts);
+  } catch {
+    fronts = cacheGetFronts();
   }
-  renderMessages();
+
+  if (!activeFrontId || !fronts.find(f => f.id === activeFrontId)) {
+    activeFrontId = fronts.length ? fronts[0].id : null;
+  }
+}
+
+async function loadMessages(frontId) {
+  if (!frontId) { messages = []; return; }
+  try {
+    const data = await apiFetch(APPS_SCRIPT_URL + '?front=' + encodeURIComponent(frontId));
+    messages = data.messages || [];
+    cacheSetMessages(frontId, messages);
+  } catch {
+    messages = cacheGetMessages(frontId);
+  }
+}
+
+async function createFront(name) {
+  const data = await apiPost({ action: 'createFront', name });
+  const newFront = { id: name, name: name };
+  fronts = [...fronts, newFront];
+  cacheSetFronts(fronts);
+  return newFront;
 }
 
 async function saveMessage(texto) {
@@ -78,25 +90,10 @@ async function saveMessage(texto) {
     message: texto,
     created_at: new Date().toISOString(),
   };
-
-  setSyncStatus('loading', 'Guardando...');
-  try {
-    await postMessage(msg);
-    messages = [msg, ...messages];
-    cacheSet(activeFrontId, messages);
-    renderMessages();
-    setSyncStatus('success', 'Guardado.');
-  } catch (err) {
-    setSyncStatus('error', 'No se pudo guardar. (' + err.message + ')');
-  }
-}
-
-function selectFront(frontId) {
-  activeFrontId = frontId;
-  localStorage.setItem('hash_active_front', frontId);
-  renderFrontList();
-  renderHeader();
-  syncFront(frontId);
+  await apiPost({ action: 'saveMessage', data: msg });
+  messages = [msg, ...messages];
+  cacheSetMessages(activeFrontId, messages);
+  return msg;
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
@@ -104,7 +101,8 @@ function selectFront(frontId) {
 function renderFrontList() {
   const nav = document.getElementById('front-list');
   nav.innerHTML = '';
-  FRONTS.forEach(f => {
+
+  fronts.forEach(f => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'front-item' + (f.id === activeFrontId ? ' front-item--active' : '');
@@ -112,12 +110,20 @@ function renderFrontList() {
     btn.onclick = () => selectFront(f.id);
     nav.appendChild(btn);
   });
+
+  // Botón nuevo frente
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'front-add';
+  addBtn.textContent = '+ Nuevo frente';
+  addBtn.onclick = handleNewFront;
+  nav.appendChild(addBtn);
 }
 
 function renderHeader() {
-  const front = FRONTS.find(f => f.id === activeFrontId);
+  const front = fronts.find(f => f.id === activeFrontId);
   document.getElementById('active-front-name').textContent = front ? front.name : '—';
-  document.getElementById('active-front-description').textContent = front ? front.description : '';
+  document.getElementById('active-front-description').textContent = '';
 }
 
 function renderMessages() {
@@ -146,10 +152,80 @@ function setSyncStatus(state, text) {
   const el = document.getElementById('sync-status');
   el.dataset.state = state;
   el.textContent = text;
-  const saving = state === 'loading';
-  document.getElementById('sync-button').disabled = saving;
-  document.getElementById('message-submit').disabled = saving;
+  const busy = state === 'loading';
+  document.getElementById('sync-button').disabled = busy;
+  document.getElementById('message-submit').disabled = busy;
 }
+
+// ── Handlers ───────────────────────────────────────────────────────────────
+
+async function selectFront(frontId) {
+  activeFrontId = frontId;
+  localStorage.setItem('hash_active_front', frontId);
+  renderFrontList();
+  renderHeader();
+  setSyncStatus('loading', 'Cargando...');
+  await loadMessages(frontId);
+  renderMessages();
+  setSyncStatus('success', messages.length + ' mensaje(s).');
+}
+
+async function handleNewFront() {
+  const name = prompt('Nombre del nuevo frente:');
+  if (!name || !name.trim()) return;
+  setSyncStatus('loading', 'Creando frente...');
+  try {
+    const front = await createFront(name.trim());
+    activeFrontId = front.id;
+    localStorage.setItem('hash_active_front', front.id);
+    messages = [];
+    renderFrontList();
+    renderHeader();
+    renderMessages();
+    setSyncStatus('success', 'Frente creado.');
+  } catch (err) {
+    setSyncStatus('error', 'No se pudo crear el frente. (' + err.message + ')');
+  }
+}
+
+async function handleSync() {
+  setSyncStatus('loading', 'Actualizando...');
+  await loadFronts();
+  renderFrontList();
+  renderHeader();
+  await loadMessages(activeFrontId);
+  renderMessages();
+  setSyncStatus('success', messages.length + ' mensaje(s).');
+}
+
+async function handleSaveMessage() {
+  const input = document.getElementById('message-input');
+  const texto = input.value.trim();
+  if (!texto || !activeFrontId) return;
+  input.value = '';
+  setSyncStatus('loading', 'Guardando...');
+  try {
+    await saveMessage(texto);
+    renderMessages();
+    setSyncStatus('success', 'Guardado.');
+  } catch (err) {
+    setSyncStatus('error', 'No se pudo guardar. (' + err.message + ')');
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('sync-button').addEventListener('click', handleSync);
+
+  document.getElementById('message-submit').addEventListener('click', handleSaveMessage);
+
+  document.getElementById('message-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveMessage();
+  });
+
+  await handleSync();
+});
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 
@@ -168,32 +244,3 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
-
-// ── Init ───────────────────────────────────────────────────────────────────
-
-document.addEventListener('DOMContentLoaded', () => {
-  renderFrontList();
-  renderHeader();
-
-  document.getElementById('sync-button').addEventListener('click', () => syncFront(activeFrontId));
-
-  document.getElementById('message-submit').addEventListener('click', async () => {
-    const input = document.getElementById('message-input');
-    const texto = input.value.trim();
-    if (!texto) return;
-    input.value = '';
-    await saveMessage(texto);
-  });
-
-  document.getElementById('message-input').addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      const input = document.getElementById('message-input');
-      const texto = input.value.trim();
-      if (!texto) return;
-      input.value = '';
-      await saveMessage(texto);
-    }
-  });
-
-  syncFront(activeFrontId);
-});
