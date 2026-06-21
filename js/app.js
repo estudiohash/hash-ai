@@ -1,110 +1,199 @@
 /**
- * app.js
- * ---------------------------------------------------------------------------
- * Punto de entrada y orquestador de HASH.
- *
- * Este archivo NO guarda datos directamente (eso es storage.js), no sabe
- * de dónde viene el almacenamiento externo (eso es config.js +
- * js/datasources/) y no manipula el DOM directamente (eso es ui.js). Su
- * única responsabilidad es coordinar: reacciona a acciones del usuario,
- * pide/guarda datos a través de Storage, y le pide a UI que renderice el
- * resultado.
- *
- * La memoria de HASH es siempre local (ver storage.js y la sección
- * "Almacenamiento externo" del README). El almacenamiento externo
- * es solo una replicación/respaldo: si falla, HASH sigue funcionando
- * igual con lo que ya guardó localmente.
- * ---------------------------------------------------------------------------
+ * app.js — HASH
+ * Fuente de verdad: Google Sheets vía Apps Script.
+ * localStorage: caché de lectura rápida y respaldo ante fallos momentáneos.
  */
 
-(() => {
+// ── Configuración ──────────────────────────────────────────────────────────
 
-  function init() {
-    Storage.init();
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbykkY8Cc9_iLQ5F5cGiL3iFXAol_HNIc8TOCia547S2NHAuboN0Bc745zS4KUjF0yjG3Q/exec';
 
-    const activeFrontId = Storage.getActiveFrontId();
+const FRONTS = [
+  { id: 'personal',   name: 'Personal',   description: 'Reflexiones y vida personal.' },
+  { id: 'hash-ai',    name: 'HASH AI',    description: 'Desarrollo del proyecto HASH.' },
+  { id: 'method',     name: 'Method',     description: 'Procesos, metodologías y forma de trabajo.' },
+  { id: 'calambre',   name: 'CALAMBRE',   description: '' },
+  { id: 'banger',     name: 'BANGER',     description: '' },
+];
 
-    renderFrontList(activeFrontId);
-    renderActiveFront(activeFrontId);
+// ── Estado ─────────────────────────────────────────────────────────────────
 
-    UI.onMessageSubmit(handleNewMessage);
-    UI.onSyncRequested(handleSyncRequested);
+let activeFrontId = localStorage.getItem('hash_active_front') || FRONTS[0].id;
+let messages = [];  // mensajes del frente activo, cargados desde Sheets o caché
 
-    // Sincroniza con la fuente externa configurada en config.js al
-    // arrancar, sin bloquear el render inicial (que ya usó lo que había
-    // en localStorage). Si falla, se muestra el error pero la app sigue
-    // siendo usable con los datos locales.
-    handleSyncRequested();
+// ── Caché local ────────────────────────────────────────────────────────────
+
+function cacheGet(frontId) {
+  try {
+    return JSON.parse(localStorage.getItem('hash_msgs_' + frontId)) || [];
+  } catch { return []; }
+}
+
+function cacheSet(frontId, msgs) {
+  try {
+    localStorage.setItem('hash_msgs_' + frontId, JSON.stringify(msgs));
+  } catch {}
+}
+
+// ── Red ────────────────────────────────────────────────────────────────────
+
+async function fetchMessages(frontId) {
+  const res = await fetch(APPS_SCRIPT_URL + '?front=' + encodeURIComponent(frontId));
+  if (!res.ok) throw new Error('Error ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Error desconocido');
+  return data.messages; // [{ id, front, message, created_at }, ...]
+}
+
+async function postMessage(msg) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'saveMessage', data: msg }),
+  });
+  if (!res.ok) throw new Error('Error ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Error desconocido');
+  return data;
+}
+
+// ── Lógica ─────────────────────────────────────────────────────────────────
+
+async function syncFront(frontId) {
+  setSyncStatus('loading', 'Actualizando...');
+  try {
+    messages = await fetchMessages(frontId);
+    cacheSet(frontId, messages);
+    setSyncStatus('success', messages.length + ' mensaje(s) cargado(s).');
+  } catch (err) {
+    messages = cacheGet(frontId);
+    setSyncStatus('error', 'Sin conexión. Mostrando caché local.');
   }
+  renderMessages();
+}
 
-  function renderFrontList(activeFrontId) {
-    const fronts = Storage.getFronts();
-    UI.renderFrontList(fronts, activeFrontId, handleSelectFront);
+async function saveMessage(texto) {
+  const msg = {
+    id: crypto.randomUUID(),
+    front: activeFrontId,
+    message: texto,
+    created_at: new Date().toISOString(),
+  };
+
+  setSyncStatus('loading', 'Guardando...');
+  try {
+    await postMessage(msg);
+    messages = [msg, ...messages];
+    cacheSet(activeFrontId, messages);
+    renderMessages();
+    setSyncStatus('success', 'Guardado.');
+  } catch (err) {
+    setSyncStatus('error', 'No se pudo guardar. (' + err.message + ')');
   }
+}
 
-  function renderActiveFront(frontId) {
-    const front = Storage.getFrontById(frontId);
-    const messages = Storage.getMessagesByFront(frontId);
+function selectFront(frontId) {
+  activeFrontId = frontId;
+  localStorage.setItem('hash_active_front', frontId);
+  renderFrontList();
+  renderHeader();
+  syncFront(frontId);
+}
 
-    UI.renderActiveFrontHeader(front);
-    UI.renderMessages(messages);
+// ── Render ─────────────────────────────────────────────────────────────────
+
+function renderFrontList() {
+  const nav = document.getElementById('front-list');
+  nav.innerHTML = '';
+  FRONTS.forEach(f => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'front-item' + (f.id === activeFrontId ? ' front-item--active' : '');
+    btn.textContent = f.name;
+    btn.onclick = () => selectFront(f.id);
+    nav.appendChild(btn);
+  });
+}
+
+function renderHeader() {
+  const front = FRONTS.find(f => f.id === activeFrontId);
+  document.getElementById('active-front-name').textContent = front ? front.name : '—';
+  document.getElementById('active-front-description').textContent = front ? front.description : '';
+}
+
+function renderMessages() {
+  const list = document.getElementById('message-list');
+  list.innerHTML = '';
+  if (!messages.length) {
+    const p = document.createElement('p');
+    p.className = 'message-list-empty';
+    p.textContent = 'Todavía no hay nada registrado en este frente.';
+    list.appendChild(p);
+    return;
   }
+  [...messages]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .forEach(msg => {
+      const item = document.createElement('div');
+      item.className = 'message-item';
+      item.innerHTML =
+        '<span class="message-item-date">' + formatDate(msg.created_at) + '</span>' +
+        '<p class="message-item-text">' + escapeHtml(msg.message) + '</p>';
+      list.appendChild(item);
+    });
+}
 
-  function handleSelectFront(frontId) {
-    Storage.setActiveFrontId(frontId);
-    renderFrontList(frontId);
-    renderActiveFront(frontId);
-  }
+function setSyncStatus(state, text) {
+  const el = document.getElementById('sync-status');
+  el.dataset.state = state;
+  el.textContent = text;
+  const saving = state === 'loading';
+  document.getElementById('sync-button').disabled = saving;
+  document.getElementById('message-submit').disabled = saving;
+}
 
-  /**
-   * Guarda un mensaje nuevo. El guardado local (addMessage) es la
-   * operación que importa: es síncrona y nunca depende de la red, así
-   * que el mensaje queda visible en HASH inmediatamente. Después,
-   * de forma asíncrona y no bloqueante, se intenta replicar hacia el
-   * almacenamiento externo activo (si lo hay) — si eso falla, el
-   * mensaje sigue estando guardado en HASH igual.
-   */
-  async function handleNewMessage() {
-    const texto = UI.readAndClearInput();
+// ── Utilidades ─────────────────────────────────────────────────────────────
+
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderFrontList();
+  renderHeader();
+
+  document.getElementById('sync-button').addEventListener('click', () => syncFront(activeFrontId));
+
+  document.getElementById('message-submit').addEventListener('click', async () => {
+    const input = document.getElementById('message-input');
+    const texto = input.value.trim();
     if (!texto) return;
+    input.value = '';
+    await saveMessage(texto);
+  });
 
-    const activeFrontId = Storage.getActiveFrontId();
-    const mensaje = Storage.addMessage(activeFrontId, texto);
-
-    renderActiveFront(activeFrontId);
-
-    UI.renderSyncStatus('loading', 'Guardando en almacenamiento externo...');
-    const resultado = await Storage.replicateToExternalSource(mensaje);
-
-    if (resultado.replicado) {
-      UI.renderSyncStatus('success', 'Mensaje guardado también en el almacenamiento externo.');
-    } else {
-      UI.renderSyncStatus('error', `Mensaje guardado en HASH, pero no se replicó afuera (${resultado.motivo}).`);
+  document.getElementById('message-input').addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      const input = document.getElementById('message-input');
+      const texto = input.value.trim();
+      if (!texto) return;
+      input.value = '';
+      await saveMessage(texto);
     }
-  }
+  });
 
-  /**
-   * Pide a storage.js que traiga lo último de la fuente externa activa
-   * (configurada en config.js) y refresca la pantalla si llegó algo nuevo.
-   */
-  async function handleSyncRequested() {
-    UI.renderSyncStatus('loading', 'Actualizando desde el almacenamiento externo...');
-
-    try {
-      const resultado = await Storage.syncFromExternalSource();
-      const activeFrontId = Storage.getActiveFrontId();
-
-      renderFrontList(activeFrontId);
-      renderActiveFront(activeFrontId);
-
-      const detalle = `${resultado.mensajesNuevos} mensaje(s) nuevo(s)` +
-        (resultado.frentesNuevos > 0 ? `, ${resultado.frentesNuevos} frente(s) nuevo(s)` : '');
-      UI.renderSyncStatus('success', detalle);
-    } catch (err) {
-      UI.renderSyncStatus('error', err.message);
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', init);
-
-})();
+  syncFront(activeFrontId);
+});
