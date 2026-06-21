@@ -1,0 +1,30 @@
+{
+  "_comentario": "Listado de frentes (contextos) disponibles en HASH. Cada frente es un espacio independiente donde se acumulan mensajes/entradas. Este archivo es la semilla inicial; en runtime los datos reales viven en localStorage (ver js/storage.js).",
+  "frentes": [
+    {
+      "id": "personal",
+      "nombre": "Personal",
+      "descripcion": "Registro personal: experiencia, decisiones y aprendizajes individuales."
+    },
+    {
+      "id": "hash-ai",
+      "nombre": "HASH AI",
+      "descripcion": "Contexto dedicado a la futura capa de inteligencia artificial de HASH."
+    },
+    {
+      "id": "method",
+      "nombre": "Method",
+      "descripcion": "Procesos, metodologías y forma de trabajo."
+    },
+    {
+      "id": "calambre",
+      "nombre": "CALAMBRE",
+      "descripcion": "Frente independiente: CALAMBRE."
+    },
+    {
+      "id": "banger",
+      "nombre": "BANGER",
+      "descripcion": "Frente independiente: BANGER."
+    }
+  ]
+}
