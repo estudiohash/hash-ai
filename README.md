@@ -47,13 +47,14 @@ de mensajes, y agregar/quitar frentes en el futuro no afecta a los demás.
     dataSourceFactory.js     Único lugar que lee config.js y decide qué almacenamiento usar
 /data/
   fronts.json       Semilla con la definición de los frentes iniciales
-  README.md         Explica el rol de /data y el esquema de los datos
 /apps-script/
   Code.gs            Puente de escritura (Google Apps Script). NO corre dentro de HASH.
-  README.md          Cómo instalarlo en tu hoja, paso a paso.
-/docs/
-  decisiones-arquitectura.md   Registro de decisiones de diseño (ADRs)
 ```
+
+Toda la documentación del proyecto vive en este único README (instalación
+del puente de escritura, esquema de datos, decisiones de arquitectura).
+No hay otros `.md` en el proyecto a propósito: un solo lugar para leer,
+nada que mantener sincronizado entre archivos.
 
 ## Responsabilidad de cada archivo
 
@@ -71,7 +72,6 @@ de mensajes, y agregar/quitar frentes en el futuro no afecta a los demás.
 | `js/datasources/dataSourceFactory.js`   | Lee `config.js` y devuelve el almacenamiento activo ya listo para usar. Único punto que conoce el `REGISTRY` disponible. |
 | `data/fronts.json` | Configuración inicial (semilla) de los frentes disponibles.                    |
 | `apps-script/Code.gs` | Script externo (no corre en HASH) que recibe mensajes vía HTTP y los agrega como filas en la hoja. |
-| `docs/decisiones-arquitectura.md` | Por qué HASH no depende de servicios externos para su memoria, y por qué hace falta el puente de Apps Script. |
 
 Esta separación es intencional: si en el futuro `storage.js` pasa de usar
 `localStorage` a una base de datos real, **solo ese archivo debería
@@ -97,13 +97,58 @@ Todo se guarda en el `localStorage` del navegador. Esto significa:
 - Borrar los datos del sitio en el navegador borra el historial guardado.
 - No hay backend ni autenticación en esta etapa.
 
+### Esquema de un mensaje
+
+```json
+{
+  "id": "msg_1718900000000_a1b2c3",
+  "frontId": "personal",
+  "texto": "Contenido del mensaje",
+  "timestamp": 1718900000000,
+  "autor": null,
+  "origen": "externo"
+}
+```
+
+`autor` y `origen` son opcionales: solo aparecen en mensajes que llegaron
+por sincronización desde el almacenamiento externo (ver
+`js/storage.js#mergeExternalMessages`). Los mensajes creados directamente
+en HASH (`Storage.addMessage`) no los incluyen.
+
+### Esquema de un frente
+
+```json
+{
+  "id": "personal",
+  "nombre": "Personal",
+  "descripcion": "Registro personal: experiencia, decisiones y aprendizajes individuales."
+}
+```
+
+`data/fronts.json` es la semilla con la que `storage.js` inicializa
+`localStorage` la primera vez que se abre HASH en un navegador nuevo. No
+es la base de datos en vivo — eso siempre es `localStorage`.
+
 ## Almacenamiento externo (Google Sheets)
 
 > **Principio de arquitectura:** la memoria de HASH es siempre local.
-> Google Sheets es almacenamiento de respaldo, reemplazable, nunca una
-> dependencia crítica. Ver el detalle completo en
-> [`docs/decisiones-arquitectura.md`](./docs/decisiones-arquitectura.md)
-> (ADR-001).
+> HASH no depende de ningún servicio externo para construir, modificar
+> o enriquecer su memoria — la memoria le pertenece a HASH, no a la
+> plataforma donde se guarda una copia. Concretamente:
+>
+> - La fuente de verdad es siempre el storage local (`localStorage` hoy).
+>   Todo lo que HASH muestra o recuerda sale de ahí, nunca de una
+>   consulta en vivo a un servicio externo.
+> - Google Sheets es almacenamiento de respaldo/replicación, visible y
+>   editable a mano — no una fuente de la que HASH "aprenda" ni desde la
+>   que construya razonamiento.
+> - Cualquier servicio externo es reemplazable por definición: si Sheets
+>   se cae, se desconfigura, o se reemplaza por otra cosa, HASH sigue
+>   funcionando igual con su storage local. Ningún servicio externo es
+>   punto único de falla.
+> - La inteligencia futura de HASH (etapa posterior, fuera de esta
+>   entrega) se construye sobre su propia memoria acumulada, no sobre
+>   consultas permanentes a APIs o servicios de terceros.
 
 Además de lo que el usuario escribe directamente en HASH, la app puede
 **leer y escribir** una copia de las conversaciones en una hoja de Google
@@ -136,8 +181,7 @@ Ocurre automáticamente al abrir HASH, y también con el botón
 El CSV publicado de Google Sheets es de **solo lectura** — Google no
 permite escribir a través de ese link bajo ninguna circunstancia. Por eso
 la escritura usa un camino distinto: un pequeño puente de Google Apps
-Script, publicado como Web App (ver `/apps-script/README.md` para
-instalarlo, toma ~2 minutos y es un paso manual único).
+Script, publicado como Web App (instrucciones de instalación más abajo).
 
 ```
 Usuario completa el formulario y hace click en "Guardar"
@@ -164,6 +208,50 @@ caído, etc.), **el mensaje sigue guardado en HASH igual** — solo no llegó
 a copiarse en la hoja. La interfaz muestra el estado de esa operación
 debajo del botón de actualizar.
 
+### Instalar el puente de escritura (`apps-script/Code.gs`)
+
+`apps-script/Code.gs` no es parte de la aplicación HASH ni corre en el
+navegador. Es el código que se instala manualmente *en la hoja de Google
+Sheets* para habilitar la escritura: HASH solo le hace peticiones HTTP
+a la URL que ese script expone una vez publicado.
+
+Instalación (una sola vez, ~2 minutos):
+
+1. Abrí la hoja de Google Sheets (la que tiene las columnas
+   `id, front, message, created_at`).
+2. Menú **Extensiones > Apps Script**.
+3. Borrá el contenido del editor que se abre y pegá el contenido completo
+   de `apps-script/Code.gs`.
+4. Arriba a la derecha: **Implementar > Nueva implementación**.
+5. En "Tipo", elegí **Aplicación web**.
+   - **Ejecutar como:** "Yo" (tu cuenta)
+   - **Quién tiene acceso:** "Cualquier usuario"
+
+   > Esto NO hace pública la hoja completa. Solo expone esta función
+   > puntual (agregar una fila con esos 4 campos). La hoja sigue con los
+   > permisos de acceso que ya tenía para verla/editarla manualmente.
+
+6. Hacé clic en **Implementar**. Google va a pedir autorizar el script
+   la primera vez — aceptá los permisos (el script solo edita esta hoja).
+7. Copiá la **URL de la aplicación web** que se muestra (termina en `/exec`).
+8. Pegá esa URL en `js/config.js` (ver siguiente sección).
+
+Si más adelante modificás `Code.gs`, al reimplementar tenés dos opciones:
+**Gestionar implementaciones > editar la existente** (mantiene la misma
+URL, no hay que tocar `config.js`), o **Nueva implementación** (da una
+URL nueva que hay que actualizar).
+
+Para probar que el puente funciona sin tocar HASH: pegá la URL `/exec`
+en la barra del navegador (eso hace un GET). Debería devolver
+`{"ok":true,"info":"Puente de escritura HASH -> Sheets activo."}`. Si
+ves eso, el puente está bien instalado y cualquier problema restante
+está del lado de HASH, no de Sheets.
+
+Este puente solo transporta datos — recibe `{ id, front, message,
+created_at }` y agrega una fila, sin interpretar ni transformar nada.
+Es infraestructura reemplazable: si se decide dejar de usar Google
+Sheets, este script se borra sin afectar en nada al resto de HASH.
+
 ### Configuración necesaria
 
 En `js/config.js`, dentro de `dataSource.settings['google-sheets']`:
@@ -176,7 +264,7 @@ En `js/config.js`, dentro de `dataSource.settings['google-sheets']`:
 ```
 
 Sin `writeUrl`, HASH funciona normalmente (guarda todo local) pero no
-replica hacia la hoja. Instrucciones completas: `/apps-script/README.md`.
+replica hacia la hoja. Instrucciones de instalación: sección anterior.
 
 ### Cómo cambiar de almacenamiento (sin tocar el resto del sistema)
 
@@ -216,12 +304,12 @@ representa nada para guardar.
 - Autenticación
 - Búsqueda avanzada
 - Cualquier funcionalidad cognitiva
-- **Dependencia de servicios externos para la memoria de HASH.** Ver
-  [`docs/decisiones-arquitectura.md`](./docs/decisiones-arquitectura.md)
-  (ADR-001): Google Sheets es almacenamiento de respaldo reemplazable,
-  no una fuente de la que HASH dependa para funcionar, mostrar mensajes
-  o construir su memoria. Si el almacenamiento externo falla o se
-  desconecta, HASH sigue funcionando igual con su storage local.
+- **Dependencia de servicios externos para la memoria de HASH.** Google
+  Sheets es almacenamiento de respaldo reemplazable, no una fuente de la
+  que HASH dependa para funcionar, mostrar mensajes o construir su
+  memoria (ver el principio de arquitectura más arriba). Si el
+  almacenamiento externo falla o se desconecta, HASH sigue funcionando
+  igual con su storage local.
 
 Estas piezas se incorporarán en etapas posteriores, sin necesidad de
 reorganizar el proyecto, gracias a la separación de responsabilidades

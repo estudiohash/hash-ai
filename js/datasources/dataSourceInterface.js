@@ -52,8 +52,8 @@
  *   4. Si falla, lanza un error (throw) en vez de fallar en silencio,
  *      para que storage.js pueda decidir cómo manejarlo.
  *   5. NUNCA es la fuente de verdad de la memoria de HASH. La fuente de
- *      verdad es siempre el storage local (ver ADR-001 en
- *      /docs/decisiones-arquitectura.md). Un adaptador externo es
+ *      verdad es siempre el storage local (ver el README, sección
+ *      "Almacenamiento externo"). Un adaptador externo es
  *      almacenamiento adicional, reemplazable y desconectable en
  *      cualquier momento sin pérdida de funcionalidad del núcleo de HASH.
  *

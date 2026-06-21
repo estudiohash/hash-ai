@@ -28,10 +28,10 @@
  * Si la hoja no trae alguna columna, se usan valores por defecto
  * razonables en vez de romper la carga completa.
  *
- * Recordatorio de arquitectura (ver /docs/decisiones-arquitectura.md):
- * este adaptador es almacenamiento, no inteligencia. HASH no consulta
- * esta hoja para razonar ni para enriquecer su memoria; solo la usa
- * como destino/origen de respaldo de lo que ya vive en el storage local.
+ * Recordatorio de arquitectura (ver el README, sección "Almacenamiento
+ * externo"): este adaptador es almacenamiento, no inteligencia. HASH no
+ * consulta esta hoja para razonar ni para enriquecer su memoria; solo la
+ * usa como destino/origen de respaldo de lo que ya vive en el storage local.
  * ---------------------------------------------------------------------------
  */
 
@@ -65,8 +65,8 @@ const GoogleSheetsSource = (() => {
           throw new Error(
             'GoogleSheetsSource: falta "writeUrl" en la configuración. ' +
             'Sin esa URL no es posible escribir en la hoja (el CSV publicado ' +
-            'es de solo lectura). Ver /apps-script/README.md para instalar ' +
-            'el puente de escritura y obtener esa URL.'
+            'es de solo lectura). Ver el README, sección "Almacenamiento ' +
+            'externo", para instalar el puente de escritura y obtener esa URL.'
           );
         }
 

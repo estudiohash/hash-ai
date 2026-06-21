@@ -7,8 +7,8 @@
  * dónde se respaldan las conversaciones (hoy Google Sheets, mañana otra
  * cosa, o ninguna).
  *
- * Principio de arquitectura (ver /docs/decisiones-arquitectura.md,
- * ADR-001): la fuente de verdad de HASH es siempre su storage local
+ * Principio de arquitectura (ver el README, sección "Almacenamiento
+ * externo"): la fuente de verdad de HASH es siempre su storage local
  * (localStorage hoy; lo que sea mañana). Lo que se configura acá es
  * almacenamiento de respaldo/replicación, NUNCA una fuente de la que
  * HASH dependa para funcionar, razonar o construir su memoria. HASH
@@ -51,8 +51,8 @@ const HASH_CONFIG = {
         // Sin esta URL, los mensajes se siguen guardando en HASH
         // normalmente, pero no se replican hacia la hoja.
         //
-        // Cómo conseguir esta URL: ver /apps-script/README.md
-        // (instalación de ~2 minutos, una sola vez).
+        // Cómo conseguir esta URL: ver el README, sección "Almacenamiento
+        // externo" (instalación de ~2 minutos, una sola vez).
         writeUrl: '',
       },
 

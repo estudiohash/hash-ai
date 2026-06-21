@@ -9,8 +9,8 @@
  * sin saber ni importarle si por detrás hay un CSV de Google Sheets,
  * localStorage, o cualquier otra cosa en el futuro.
  *
- * Importante (ver /docs/decisiones-arquitectura.md, ADR-001): esto es un
- * registro de destinos de ALMACENAMIENTO, no de fuentes de conocimiento
+ * Importante (ver el README, sección "Almacenamiento externo"): esto es
+ * un registro de destinos de ALMACENAMIENTO, no de fuentes de conocimiento
  * o inteligencia. HASH no consulta estas fuentes para razonar; las usa
  * únicamente para guardar/recuperar una copia de lo que ya vive en su
  * storage local. Cualquier entrada de este registro es reemplazable sin

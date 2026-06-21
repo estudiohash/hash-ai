@@ -10,8 +10,8 @@
  * pide/guarda datos a través de Storage, y le pide a UI que renderice el
  * resultado.
  *
- * La memoria de HASH es siempre local (ver storage.js y
- * /docs/decisiones-arquitectura.md, ADR-001). El almacenamiento externo
+ * La memoria de HASH es siempre local (ver storage.js y la sección
+ * "Almacenamiento externo" del README). El almacenamiento externo
  * es solo una replicación/respaldo: si falla, HASH sigue funcionando
  * igual con lo que ya guardó localmente.
  * ---------------------------------------------------------------------------

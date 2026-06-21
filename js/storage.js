@@ -19,7 +19,7 @@
  * encapsulado en js/datasources/. Si mañana cambia o desaparece la fuente
  * externa, este archivo no necesita tocarse: solo cambia config.js, y
  * HASH sigue funcionando con su storage local sin degradarse.
- * Ver /docs/decisiones-arquitectura.md (ADR-001) para el razonamiento
+ * Ver el README, sección "Almacenamiento externo", para el razonamiento
  * completo detrás de esta separación.
  * ---------------------------------------------------------------------------
  */
