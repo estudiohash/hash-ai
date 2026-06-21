@@ -53,8 +53,8 @@ html, body {
 
 body {
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.45;
   color: var(--text);
   background: var(--black);
   -webkit-font-smoothing: antialiased;
@@ -76,22 +76,22 @@ body {
 /* ---------- Sidebar ---------- */
 
 #sidebar {
-  width: 220px;
+  width: 200px;
   min-width: 0;
   flex-shrink: 0;
   border-right: 1px solid var(--border);
-  padding: 24px 16px;
+  padding: 18px 14px;
   overflow-y: auto;
   background: var(--graphite);
 }
 
 #app-title {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--lime);
-  margin: 0 0 24px 0;
+  margin: 0 0 16px 0;
 }
 
 #front-list {
@@ -103,14 +103,14 @@ body {
 .front-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   text-align: left;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 9px 12px;
+  padding: 7px 10px;
   font-family: var(--font-display);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-dim);
   cursor: pointer;
@@ -155,7 +155,7 @@ body {
 }
 
 #main-header {
-  padding: 20px 28px;
+  padding: 14px 22px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -173,8 +173,8 @@ body {
 
 #active-front-name {
   font-family: var(--font-display);
-  margin: 0 0 4px 0;
-  font-size: 1.25rem;
+  margin: 0 0 2px 0;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
   overflow-wrap: break-word;
@@ -183,7 +183,7 @@ body {
 #active-front-description {
   margin: 0;
   color: var(--text-dim);
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 #sync-controls {
@@ -192,13 +192,13 @@ body {
 }
 
 #sync-button {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-dim);
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 500;
   cursor: pointer;
   transition: background-color 150ms var(--ease), border-color 150ms var(--ease), color 150ms var(--ease);
@@ -216,8 +216,8 @@ body {
 }
 
 #sync-status {
-  margin: 7px 0 0 0;
-  font-size: 0.74rem;
+  margin: 6px 0 0 0;
+  font-size: 0.7rem;
   color: var(--text-faint);
   min-height: 1em;
 }
@@ -240,22 +240,22 @@ body {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 16px 22px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
 }
 
 .message-list-empty {
   color: var(--text-faint);
   font-style: italic;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
 }
 
 .message-item {
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  padding: 9px 13px;
   background: var(--graphite);
   transition: border-color 150ms var(--ease), transform 150ms var(--ease);
 }
@@ -266,9 +266,9 @@ body {
 
 .message-item-date {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   color: var(--text-faint);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -277,15 +277,15 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   color: #d4d4d4;
-  font-size: 0.94rem;
-  line-height: 1.55;
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 /* ---------- Composer ---------- */
 
 #composer {
   border-top: 1px solid var(--border);
-  padding: 16px 28px;
+  padding: 12px 22px;
   display: flex;
   gap: 10px;
   align-items: flex-end;
@@ -297,13 +297,13 @@ body {
   min-width: 0;
   resize: vertical;
   font-family: var(--font-body);
-  font-size: 0.92rem;
-  padding: 12px 14px;
+  font-size: 0.88rem;
+  padding: 9px 12px;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--graphite);
   color: var(--text);
-  min-height: 60px;
+  min-height: 44px;
   transition: border-color 150ms var(--ease);
 }
 
@@ -317,13 +317,13 @@ body {
 }
 
 #message-submit {
-  padding: 12px 22px;
+  padding: 9px 18px;
   border: none;
   border-radius: var(--radius-pill);
   background: linear-gradient(135deg, var(--lime-dim), var(--lime));
   color: var(--black);
   font-family: var(--font-display);
-  font-size: 0.92rem;
+  font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -372,18 +372,18 @@ body {
     flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    padding: 16px 16px 12px;
+    padding: 12px 14px 10px;
   }
 
   #app-title {
-    margin: 0 0 12px 0;
+    margin: 0 0 10px 0;
   }
 
   #front-list {
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
-    gap: 6px;
+    gap: 5px;
     padding-bottom: 2px;
   }
 
@@ -398,13 +398,13 @@ body {
   }
 
   #main-header {
-    padding: 14px 18px;
+    padding: 12px 16px;
   }
 
   #main-header-top {
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 8px;
   }
 
   #sync-controls {
@@ -416,11 +416,11 @@ body {
   }
 
   #message-list {
-    padding: 16px 18px;
+    padding: 12px 16px;
   }
 
   #composer {
-    padding: 12px 14px;
+    padding: 10px 12px;
     flex-direction: column;
     align-items: stretch;
   }
