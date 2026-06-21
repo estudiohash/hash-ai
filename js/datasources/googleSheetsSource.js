@@ -12,8 +12,14 @@
  * El link "Publicar en la web > CSV" de Google es de SOLO LECTURA; Google
  * no permite escribir a través de él. Para escribir hace falta un Apps
  * Script propio publicado como Web App, que sí tiene permiso para agregar
- * filas. El código de ese puente y su instalación están documentados en
- * /apps-script/ (carpeta separada, no se ejecuta dentro de HASH).
+ * filas. El código de ese puente (apps-script/Code.gs) NO corre dentro
+ * de HASH — vive instalado en Apps Script, del lado de la hoja.
+ *
+ * Formato exacto que espera ese puente en el POST de saveMessage (ver
+ * apps-script/Code.gs, función doPost): el body no son los campos
+ * sueltos, van envueltos en { action: 'saveMessage', data: {...} }, para
+ * que el script pueda distinguir esta operación de otras que atiende.
+ * Si se cambia el formato de un lado, hay que actualizar el otro a juego.
  *
  * Nadie fuera de este archivo necesita saber que la fuente es un CSV o
  * un Apps Script, ni cómo están nombradas sus columnas.
@@ -70,11 +76,19 @@ const GoogleSheetsSource = (() => {
           );
         }
 
+        // El puente de Apps Script espera las peticiones de escritura
+        // envueltas en { action: 'saveMessage', data: {...} } (no los
+        // campos sueltos): así puede distinguir esta operación de otras
+        // que el mismo script atiende (por ejemplo, lectura por frente
+        // vía doGet). Ver Code.gs.
         const payload = {
-          id: mensaje.id,
-          front: mensaje.frontId,
-          message: mensaje.texto,
-          created_at: new Date(mensaje.timestamp).toISOString(),
+          action: 'saveMessage',
+          data: {
+            id: mensaje.id,
+            front: mensaje.frontId,
+            message: mensaje.texto,
+            created_at: new Date(mensaje.timestamp).toISOString(),
+          },
         };
 
         await sendToWriteBridge(settings.writeUrl, payload);

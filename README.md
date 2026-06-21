@@ -197,7 +197,8 @@ app.js → Storage.replicateToExternalSource(mensaje)   ← asíncrono, best-eff
 googleSheetsSource.js → saveMessage()
         │
         ▼
-   POST al puente de Apps Script (writeUrl)
+   POST al puente de Apps Script (writeUrl), body:
+   { action: 'saveMessage', data: { id, front, message, created_at } }
         │
         ▼
    El script agrega una fila: id, front, message, created_at
@@ -212,45 +213,65 @@ debajo del botón de actualizar.
 
 `apps-script/Code.gs` no es parte de la aplicación HASH ni corre en el
 navegador. Es el código que se instala manualmente *en la hoja de Google
-Sheets* para habilitar la escritura: HASH solo le hace peticiones HTTP
-a la URL que ese script expone una vez publicado.
+Sheets* para habilitar la lectura/escritura: HASH solo le hace peticiones
+HTTP a la URL que ese script expone una vez publicado.
 
-Instalación (una sola vez, ~2 minutos):
+El contrato que implementa:
+- `GET ?front=<frontId>` → `{ ok: true, messages: [...] }` (lectura por
+  frente; HASH hoy no la usa activamente, lee por el CSV publicado).
+- `POST` con body `{ action: 'saveMessage', data: { id, front, message,
+  created_at } }` → `{ ok: true }`. Es lo que `googleSheetsSource.js`
+  llama para guardar.
+
+Instalación desde cero (solo si hay que reinstalarlo, ~2 minutos):
 
 1. Abrí la hoja de Google Sheets (la que tiene las columnas
    `id, front, message, created_at`).
 2. Menú **Extensiones > Apps Script**.
 3. Borrá el contenido del editor que se abre y pegá el contenido completo
    de `apps-script/Code.gs`.
-4. Arriba a la derecha: **Implementar > Nueva implementación**.
-5. En "Tipo", elegí **Aplicación web**.
+4. Actualizá la constante `SPREADSHEET_ID` en el script con el ID de tu
+   hoja (está en la URL: `.../spreadsheets/d/ESTE_ID/edit`).
+5. Arriba a la derecha: **Implementar > Nueva implementación**.
+6. En "Tipo", elegí **Aplicación web**.
    - **Ejecutar como:** "Yo" (tu cuenta)
    - **Quién tiene acceso:** "Cualquier usuario"
 
    > Esto NO hace pública la hoja completa. Solo expone esta función
-   > puntual (agregar una fila con esos 4 campos). La hoja sigue con los
-   > permisos de acceso que ya tenía para verla/editarla manualmente.
+   > puntual (leer/agregar filas). La hoja sigue con los permisos de
+   > acceso que ya tenía para verla/editarla manualmente.
+   >
+   > **Importante:** con "Solo yo", Google redirige cualquier visita
+   > externa a una pantalla de error de Google Drive en vez de ejecutar
+   > el script — ese es el síntoma si ves "No se pudo abrir el archivo"
+   > al probar la URL.
 
-6. Hacé clic en **Implementar**. Google va a pedir autorizar el script
+7. Hacé clic en **Implementar**. Google va a pedir autorizar el script
    la primera vez — aceptá los permisos (el script solo edita esta hoja).
-7. Copiá la **URL de la aplicación web** que se muestra (termina en `/exec`).
-8. Pegá esa URL en `js/config.js` (ver siguiente sección).
+8. Copiá la **URL de la aplicación web** que se muestra (termina en `/exec`).
+9. Pegá esa URL en `js/config.js` (ver siguiente sección).
 
 Si más adelante modificás `Code.gs`, al reimplementar tenés dos opciones:
 **Gestionar implementaciones > editar la existente** (mantiene la misma
 URL, no hay que tocar `config.js`), o **Nueva implementación** (da una
-URL nueva que hay que actualizar).
+URL nueva que hay que actualizar). Si en algún momento se ven varias
+implementaciones con nombres parecidos (`hash-ai`, `hash-ai`...), es
+porque se usó "Nueva implementación" más de una vez; cada una tiene su
+propia URL distinta y solo una es la que está pegada en `writeUrl`.
 
 Para probar que el puente funciona sin tocar HASH: pegá la URL `/exec`
-en la barra del navegador (eso hace un GET). Debería devolver
-`{"ok":true,"info":"Puente de escritura HASH -> Sheets activo."}`. Si
-ves eso, el puente está bien instalado y cualquier problema restante
-está del lado de HASH, no de Sheets.
+**con el parámetro de prueba** en la barra del navegador, por ejemplo
+`.../exec?front=personal`. Debería devolver
+`{"ok":true,"messages":[...]}` (con la lista de mensajes de ese frente,
+puede ser un array vacío). Si ves eso, el puente está bien instalado.
+Probar la URL pelada (sin `?front=`) devuelve a propósito
+`{"ok":false,"error":"Falta el parámetro front."}` — no es un error de
+instalación, es la respuesta esperada del `doGet` sin parámetros.
 
-Este puente solo transporta datos — recibe `{ id, front, message,
-created_at }` y agrega una fila, sin interpretar ni transformar nada.
-Es infraestructura reemplazable: si se decide dejar de usar Google
-Sheets, este script se borra sin afectar en nada al resto de HASH.
+Este puente solo transporta datos — guarda o devuelve filas tal cual,
+sin interpretar ni transformar nada. Es infraestructura reemplazable: si
+se decide dejar de usar Google Sheets, este script se borra sin afectar
+en nada al resto de HASH.
 
 ### Configuración necesaria
 

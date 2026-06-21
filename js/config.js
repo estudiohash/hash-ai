@@ -53,7 +53,7 @@ const HASH_CONFIG = {
         //
         // Cómo conseguir esta URL: ver el README, sección "Almacenamiento
         // externo" (instalación de ~2 minutos, una sola vez).
-        writeUrl: 'https://script.google.com/macros/s/AKfycbyRbonZ9N0S_4xvovL3Vlkn7g56EkJE15pbt_ckiis6GUqUEoLV6xbjkenBjyTvxriA2A/exec',
+        writeUrl: '',
       },
 
       'local': {

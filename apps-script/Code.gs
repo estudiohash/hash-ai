@@ -1,12 +1,12 @@
 /**
  * Code.gs
  * ---------------------------------------------------------------------------
- * PUENTE DE ESCRITURA entre HASH y Google Sheets.
+ * PUENTE de lectura/escritura entre HASH y Google Sheets.
  *
  * Este archivo NO es parte del proyecto HASH (no corre en el navegador).
- * Es el código que hay que pegar en el editor de Apps Script DE LA HOJA,
- * y publicar como "Web App". Una vez publicado, da una URL que HASH usa
- * para insertar filas nuevas.
+ * Es el código instalado en Extensiones > Apps Script DE LA HOJA, y
+ * publicado como "Web App". HASH le hace peticiones HTTP a la URL que
+ * expone (termina en /exec), nunca ejecuta este archivo directamente.
  *
  * Por qué hace falta esto:
  * El link "Publicar en la web > CSV" de Google Sheets es de SOLO LECTURA.
@@ -17,86 +17,129 @@
  * porque corre con el mismo usuario que es dueño de la hoja.
  *
  * IMPORTANTE — esto es solo un puente de transporte, no es "memoria" ni
- * "inteligencia": recibe un mensaje y lo agrega como fila. No interpreta,
- * no decide, no transforma el contenido. Es reemplazable: el día que HASH
+ * "inteligencia": guarda/devuelve mensajes tal cual. No interpreta, no
+ * decide, no transforma el contenido. Es reemplazable: el día que HASH
  * deje de usar Google Sheets, este archivo se borra y no afecta en nada
- * a la arquitectura de HASH (ver ADR-001 en /docs).
+ * a la arquitectura de HASH (ver README, sección "Almacenamiento externo").
  *
  * ---------------------------------------------------------------------------
- * CÓMO INSTALARLO (una sola vez, dura ~2 minutos)
+ * CONTRATO (cómo lo usa HASH hoy)
  * ---------------------------------------------------------------------------
- * 1. Abrí tu hoja de Google Sheets (la misma que ya tiene las columnas
- *    id, front, message, created_at).
+ * GET  ?front=<frontId>
+ *   -> { ok: true, messages: [{id, front, message, created_at}, ...] }
+ *      (HASH no usa esto activamente todavía: la lectura normal va por
+ *      el CSV publicado. Queda disponible para uso futuro/manual.)
+ *
+ * POST body JSON: { action: 'saveMessage', data: { id, front, message, created_at } }
+ *   -> { ok: true }  si se pudo agregar la fila
+ *   -> { ok: false, error: '...' }  si falló (campo faltante, hoja no
+ *      encontrada, etc.) — HASH muestra ese error tal cual en la UI.
+ *
+ * El emisor de estas peticiones es js/datasources/googleSheetsSource.js
+ * (función saveMessage). Si se cambia el formato de un lado, hay que
+ * actualizar el otro a juego.
+ *
+ * ---------------------------------------------------------------------------
+ * SI HAY QUE REINSTALARLO DESDE CERO (cuenta nueva, hoja nueva, etc.)
+ * ---------------------------------------------------------------------------
+ * 1. Abrí la hoja de Google Sheets (columnas id, front, message, created_at).
  * 2. Extensiones > Apps Script.
  * 3. Borrá todo el contenido del editor y pegá ESTE ARCHIVO completo.
- * 4. Arriba a la derecha: "Implementar" > "Nueva implementación".
- * 5. Tipo: "Aplicación web".
+ * 4. Actualizá SPREADSHEET_ID más abajo con el ID de esa hoja (está en la
+ *    URL de la hoja: .../spreadsheets/d/ESTE_ID/edit).
+ * 5. Arriba a la derecha: "Implementar" > "Nueva implementación".
+ * 6. Tipo: "Aplicación web".
  *      - Ejecutar como: "Yo" (tu cuenta, la dueña de la hoja)
- *      - Quién tiene acceso: "Cualquier usuario"
- * 6. "Implementar". Google va a pedir autorización: aceptá los permisos
- *    (el script solo edita ESTA hoja, nada más).
- * 7. Copiá la URL que te da ("URL de la aplicación web", termina en /exec).
- * 8. Pegá esa URL en HASH: js/config.js, en
+ *      - Quién tiene acceso: "Cualquier usuario"   ← CRÍTICO. Con "Solo yo"
+ *        Google redirige a una pantalla de error de Drive en vez de
+ *        ejecutar el script para cualquiera que no sea esa sesión exacta.
+ * 7. "Implementar". Aceptá los permisos que pida Google.
+ * 8. Copiá la URL ("URL de la aplicación web", termina en /exec).
+ * 9. Pegá esa URL en HASH: js/config.js, en
  *    dataSource.settings['google-sheets'].writeUrl
  *
- * Si en el futuro modificás este script y volvés a "Implementar", Google
- * te va a dar una URL NUEVA. Hay que actualizar config.js con la nueva URL
- * (o usar "Gestionar implementaciones" > editar la existente, para
- * mantener la misma URL).
+ * Si modificás este script y volvés a implementar, usá "Gestionar
+ * implementaciones > editar la existente" para mantener la misma URL
+ * (si no, Google da una URL nueva y hay que actualizar config.js).
  * ---------------------------------------------------------------------------
  */
 
-// Nombre de la pestaña/hoja donde están las columnas id, front, message, created_at.
-// Cambiar acá si tu pestaña no se llama "Sheet1".
+const SPREADSHEET_ID = '1SSlN270gdgIEPTCa7wvzAkm67fRB8atNUyQZowOX-dg';
 const SHEET_NAME = 'Sheet1';
 
 /**
- * Maneja peticiones POST. HASH manda acá cada mensaje nuevo como JSON:
- *   { id, front, message, created_at }
- * y esta función lo agrega como una fila nueva al final de la hoja.
+ * Lectura por frente: ?front=<frontId>
+ * HASH no la usa activamente hoy (lee por CSV publicado), pero queda
+ * disponible para consultas manuales o uso futuro.
+ */
+function doGet(e) {
+  try {
+    const frontId = e.parameter.front;
+    if (!frontId) {
+      return jsonResponse({ ok: false, error: 'Falta el parámetro front.' });
+    }
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    if (!ss) return jsonResponse({ ok: false, error: 'No se pudo abrir el spreadsheet. ID: ' + SPREADSHEET_ID });
+
+    const sheets = ss.getSheets().map(s => s.getName());
+    if (!sheets.includes(SHEET_NAME)) {
+      return jsonResponse({ ok: false, error: 'Hoja no encontrada. Hojas disponibles: ' + sheets.join(', ') });
+    }
+
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    const data = sheet.getDataRange().getValues();
+    const messages = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (String(row[1]) === frontId) {
+        messages.push({
+          id:         String(row[0]),
+          front:      String(row[1]),
+          message:    String(row[2]),
+          created_at: String(row[3]),
+        });
+      }
+    }
+
+    return jsonResponse({ ok: true, messages: messages });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: String(err), stack: err.stack });
+  }
+}
+
+/**
+ * Escritura: body JSON { action: 'saveMessage', data: {id, front, message, created_at} }
+ * Es lo que llama js/datasources/googleSheetsSource.js -> saveMessage().
  */
 function doPost(e) {
   try {
     const sheet = getSheet();
-    const datos = JSON.parse(e.postData.contents);
+    const body = JSON.parse(e.postData.contents);
 
-    validarCampos(datos);
+    if (body.action !== 'saveMessage') {
+      return jsonResponse({ ok: false, error: 'Acción desconocida: ' + body.action });
+    }
 
-    sheet.appendRow([
-      datos.id,
-      datos.front,
-      datos.message,
-      datos.created_at,
-    ]);
+    const d = body.data;
+    const requeridos = ['id', 'front', 'message', 'created_at'];
+    const faltantes = requeridos.filter(c => !d[c]);
+    if (faltantes.length) {
+      return jsonResponse({ ok: false, error: 'Faltan campos: ' + faltantes.join(', ') });
+    }
 
+    sheet.appendRow([d.id, d.front, d.message, d.created_at]);
     return jsonResponse({ ok: true });
   } catch (err) {
     return jsonResponse({ ok: false, error: String(err) });
   }
 }
 
-/**
- * GET de cortesía: sirve para probar desde el navegador que el script
- * está bien publicado, sin necesidad de mandar un POST.
- */
-function doGet(e) {
-  return jsonResponse({ ok: true, info: 'Puente de escritura HASH -> Sheets activo.' });
-}
-
 function getSheet() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    throw new Error('No se encontró la hoja "' + SHEET_NAME + '". Revisá SHEET_NAME en el script.');
-  }
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) throw new Error('No se encontró la hoja "' + SHEET_NAME + '".');
   return sheet;
-}
-
-function validarCampos(datos) {
-  const requeridos = ['id', 'front', 'message', 'created_at'];
-  const faltantes = requeridos.filter((campo) => !datos[campo]);
-  if (faltantes.length > 0) {
-    throw new Error('Faltan campos: ' + faltantes.join(', '));
-  }
 }
 
 function jsonResponse(obj) {
