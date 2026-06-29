@@ -126,16 +126,28 @@ async function createFront(name, description) {
 }
 
 async function syncFront(frontId) {
-  setSyncStatus('loading', 'Actualizando...');
+  // Cache-first: mostrar caché inmediatamente, luego actualizar en background
+  const cached = cacheGet(frontId);
+  if (cached.length) {
+    messages = cached;
+    renderMessages();
+    setSyncStatus('success', messages.length + ' mensaje(s) cargado(s).');
+  } else {
+    setSyncStatus('loading', 'Cargando...');
+  }
+
   try {
-    messages = await fetchMessages(frontId);
+    const fresh = await fetchMessages(frontId);
+    messages = fresh;
     cacheSet(frontId, messages);
+    renderMessages();
     setSyncStatus('success', messages.length + ' mensaje(s) cargado(s).');
   } catch (err) {
-    messages = cacheGet(frontId);
-    setSyncStatus('error', 'Sin conexión. Mostrando caché local.');
+    if (!cached.length) {
+      setSyncStatus('error', 'Sin conexión. Sin datos en caché.');
+    }
+    // Si había caché ya está mostrado, no hacer nada
   }
-  renderMessages();
 }
 
 async function saveMessage(texto) {
