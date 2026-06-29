@@ -6,19 +6,12 @@
 
 // ── Configuración ──────────────────────────────────────────────────────────
 
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbykkY8Cc9_iLQ5F5cGiL3iFXAol_HNIc8TOCia547S2NHAuboN0Bc745zS4KUjF0yjG3Q/exec';
-
-const FRONTS = [
-  { id: 'personal',   name: 'Personal',   description: 'Reflexiones y vida personal.' },
-  { id: 'hash-ai',    name: 'HASH AI',    description: 'Desarrollo del proyecto HASH.' },
-  { id: 'method',     name: 'Method',     description: 'Procesos, metodologías y forma de trabajo.' },
-  { id: 'calambre',   name: 'CALAMBRE',   description: '' },
-  { id: 'banger',     name: 'BANGER',     description: '' },
-];
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqT_7HQlrGJvHv4h2y0UbiUlaO9uQYAjb74mhpxyzqZHdocJwkQWlcr91R2N1U937pFg/exec';
 
 // ── Estado ─────────────────────────────────────────────────────────────────
 
-let activeFrontId = localStorage.getItem('hash_active_front') || FRONTS[0].id;
+let FRONTS = [];  // cargado desde Google Sheets al iniciar
+let activeFrontId = localStorage.getItem('hash_active_front') || null;
 let messages = [];  // mensajes del frente activo, cargados desde Sheets o caché
 
 // ── Caché local ────────────────────────────────────────────────────────────
@@ -32,6 +25,18 @@ function cacheGet(frontId) {
 function cacheSet(frontId, msgs) {
   try {
     localStorage.setItem('hash_msgs_' + frontId, JSON.stringify(msgs));
+  } catch {}
+}
+
+function cacheFrontsGet() {
+  try {
+    return JSON.parse(localStorage.getItem('hash_fronts')) || [];
+  } catch { return []; }
+}
+
+function cacheFrontsSet(fronts) {
+  try {
+    localStorage.setItem('hash_fronts', JSON.stringify(fronts));
   } catch {}
 }
 
@@ -56,7 +61,69 @@ async function postMessage(msg) {
   return data;
 }
 
+async function fetchFronts() {
+  const res = await fetch(APPS_SCRIPT_URL + '?resource=fronts');
+  if (!res.ok) throw new Error('Error ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Error desconocido');
+  return data.fronts; // [{ id, name, description, created_at }, ...]
+}
+
+async function postFront(front) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'saveFront', data: front }),
+  });
+  if (!res.ok) throw new Error('Error ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Error desconocido');
+  return data;
+}
+
 // ── Lógica ─────────────────────────────────────────────────────────────────
+
+async function loadFronts() {
+  try {
+    FRONTS = await fetchFronts();
+    cacheFrontsSet(FRONTS);
+  } catch (err) {
+    FRONTS = cacheFrontsGet();
+    if (!FRONTS.length) {
+      // Sin red y sin caché: sidebar muestra error pero la app no rompe
+      const nav = document.getElementById('front-list');
+      const p = document.createElement('p');
+      p.className = 'front-list-error';
+      p.textContent = 'No se pudieron cargar los chats.';
+      nav.appendChild(p);
+      return;
+    }
+  }
+
+  // Determinar frente activo: respetar el guardado en localStorage si existe
+  if (!activeFrontId || !FRONTS.find(f => f.id === activeFrontId)) {
+    activeFrontId = FRONTS[0]?.id || null;
+  }
+
+  renderFrontList();
+  renderHeader();
+  if (activeFrontId) syncFront(activeFrontId);
+}
+
+async function createFront(name, description) {
+  const front = {
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    description: description.trim(),
+    created_at: new Date().toISOString(),
+  };
+
+  await postFront(front);
+  FRONTS = [...FRONTS, front];
+  cacheFrontsSet(FRONTS);
+  renderFrontList();
+  selectFront(front.id);
+  return front;
+}
 
 async function syncFront(frontId) {
   setSyncStatus('loading', 'Actualizando...');
@@ -112,6 +179,25 @@ function renderFrontList() {
     btn.onclick = () => selectFront(f.id);
     nav.appendChild(btn);
   });
+
+  // Botón + Nuevo chat (siempre al final)
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button';
+  newBtn.id = 'new-front-button';
+  newBtn.className = 'front-item front-item--new';
+  newBtn.textContent = '+ Nuevo chat';
+  newBtn.onclick = () => {
+    const modal = document.getElementById('new-front-modal');
+    const nameInput = document.getElementById('new-front-name');
+    const descInput = document.getElementById('new-front-description');
+    const modalStatus = document.getElementById('new-front-status');
+    nameInput.value = '';
+    descInput.value = '';
+    modalStatus.textContent = '';
+    modal.removeAttribute('hidden');
+    nameInput.focus();
+  };
+  nav.appendChild(newBtn);
 }
 
 function renderHeader() {
@@ -172,8 +258,14 @@ function escapeHtml(str) {
 // ── Init ───────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  renderFrontList();
-  renderHeader();
+  // Sidebar muestra estado de carga mientras llegan los fronts
+  const nav = document.getElementById('front-list');
+  const loading = document.createElement('p');
+  loading.className = 'front-list-loading';
+  loading.textContent = 'Cargando...';
+  nav.appendChild(loading);
+
+  loadFronts();
 
   document.getElementById('sync-button').addEventListener('click', () => syncFront(activeFrontId));
 
@@ -195,5 +287,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  syncFront(activeFrontId);
+  // Modal — nuevo chat
+  const modal        = document.getElementById('new-front-modal');
+  const cancelBtn    = document.getElementById('new-front-cancel');
+  const submitBtn    = document.getElementById('new-front-submit');
+  const nameInput    = document.getElementById('new-front-name');
+  const descInput    = document.getElementById('new-front-description');
+  const modalStatus  = document.getElementById('new-front-status');
+
+  function closeModal() {
+    modal.setAttribute('hidden', '');
+  }
+  cancelBtn.addEventListener('click', closeModal);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  modal.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.focus();
+      return;
+    }
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    modalStatus.textContent = 'Guardando...';
+    try {
+      await createFront(name, descInput.value);
+      closeModal();
+    } catch (err) {
+      modalStatus.textContent = 'Error al guardar. (' + err.message + ')';
+      submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+    }
+  });
+
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitBtn.click();
+  });
 });

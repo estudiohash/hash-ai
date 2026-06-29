@@ -361,10 +361,191 @@ body {
  * del layout (header, mensajes, composer) se reordena en columna.
  * ------------------------------------------------------------------- */
 
-@media (max-width: 640px) {
 
-  #app {
-    flex-direction: column;
+/* ---------- Sidebar — estado de carga y botón nuevo chat ---------- */
+
+.front-list-loading,
+.front-list-error {
+  font-size: 0.78rem;
+  padding: 6px 11px;
+  margin: 0;
+  color: var(--text-faint);
+}
+
+.front-list-error {
+  color: #e25c4a;
+}
+
+.front-item--new {
+  color: var(--text-faint);
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  font-weight: 500;
+}
+
+.front-item--new:hover {
+  color: var(--lime);
+  background: none;
+}
+
+/* ---------- Modal — nuevo chat ---------- */
+
+#new-front-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+#new-front-modal[hidden] {
+  display: none;
+}
+
+#new-front-modal-box {
+  background: var(--graphite);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#new-front-modal-box h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+
+#new-front-modal-box label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+#new-front-modal-box label .optional {
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+#new-front-name,
+#new-front-description {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  padding: 9px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--graphite-soft);
+  color: var(--text);
+  width: 100%;
+  transition: border-color 150ms var(--ease);
+}
+
+#new-front-name:focus,
+#new-front-description:focus {
+  outline: none;
+  border-color: var(--lime);
+}
+
+#new-front-name::placeholder,
+#new-front-description::placeholder {
+  color: var(--text-faint);
+}
+
+#new-front-status {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+  min-height: 1em;
+  margin: 0;
+}
+
+#modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#new-front-cancel {
+  padding: 8px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
+}
+
+#new-front-cancel:hover {
+  background: var(--graphite-soft);
+  color: var(--text);
+}
+
+#new-front-cancel:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+#new-front-submit {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--lime-dim), var(--lime));
+  color: var(--black);
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 150ms var(--ease), box-shadow 150ms var(--ease);
+}
+
+#new-front-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(199, 245, 50, 0.25);
+}
+
+#new-front-submit:active {
+  transform: translateY(0);
+}
+
+#new-front-submit:disabled {
+  opacity: 0.4;
+  cursor: wait;
+  transform: none;
+  box-shadow: none;
+}
+
+#new-front-name:focus-visible,
+#new-front-description:focus-visible,
+#new-front-cancel:focus-visible,
+#new-front-submit:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .front-item--new {
+    border-top: none;
+    border-left: 1px solid var(--border);
+    margin-top: 0;
+    padding-top: 6px;
+  }
+
+  #new-front-modal-box {
+    padding: 20px 16px;
   }
 
   #sidebar {
