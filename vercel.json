@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/", "destination": "/preview.html" }
+  ],
   "headers": [
     {
       "source": "/css/(.*)\\.css",
