@@ -846,7 +846,7 @@ function showUpgradeModal() {
           <li>✓ Hasta 20 documentos en memoria</li>
           <li>✓ Búsqueda semántica avanzada</li>
         </ul>
-        <p class="upgrade-price">$10 USD / mes</p>
+        <p class="upgrade-price">$5 USD <span class="upgrade-period">× 3 meses</span></p>
         <div class="upgrade-pay-btns">
           <a class="upgrade-pay-btn" href="https://www.paypal.com/ncp/payment/VPXEFLL833YWN" target="_blank" rel="noopener">
             <span class="pay-icon">🅿️</span>
@@ -857,8 +857,8 @@ function showUpgradeModal() {
             <span>Mercado Pago</span>
           </button>
           <button type="button" class="upgrade-pay-btn" id="upgrade-btn-usdt">
-            <span class="pay-icon">₮</span>
-            <span>USDT</span>
+            <span class="pay-icon">₿</span>
+            <span>Crypto</span>
           </button>
         </div>
         <div id="upgrade-usdt-panel" hidden>
@@ -884,7 +884,7 @@ function showUpgradeModal() {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: 10, description: "HASH Pro" }),
+          body: JSON.stringify({ amount: 5, description: "HASH Pro" }),
         });
         const data = await res.json();
         if (data.init_point) window.open(data.init_point, '_blank');
@@ -977,7 +977,7 @@ function showCryptoModal() {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: 10, description: "HASH Pro" }),
+          body: JSON.stringify({ amount: 5, description: "HASH Pro" }),
         });
         const data = await res.json();
         if (data.init_point) {

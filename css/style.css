@@ -2083,20 +2083,21 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid var(--border);
+  background: rgba(199,245,50,0.08);
+  border: 1px solid var(--lime);
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: var(--lime);
   font-size: 0.8rem;
+  font-weight: 600;
   padding: 10px 16px;
   cursor: pointer;
-  transition: border-color 150ms, background 150ms;
+  transition: background 150ms;
   min-width: 80px;
+  text-decoration: none;
 }
 
 .upgrade-pay-btn:hover {
-  border-color: var(--lime);
-  background: rgba(199,245,50,0.06);
+  background: rgba(199,245,50,0.18);
 }
 
 .upgrade-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -2148,4 +2149,13 @@ body {
   padding: 4px 10px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+
+/* ── Precio upgrade ─────────────────────────────────────────────────────── */
+.upgrade-period {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 4px;
 }
