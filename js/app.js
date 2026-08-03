@@ -840,7 +840,7 @@ function showUpgradeModal() {
       <div id="upgrade-modal-box">
         <button type="button" id="upgrade-modal-close">✕</button>
         <div id="upgrade-modal-icon">⚡</div>
-        <h3 style="text-transform:uppercase;">Alcanzaste el límite del plan free</h3>
+        <h3>Alcanzaste el límite<br>del plan free</h3>
         <ul>
           <li>✓ Mensajes ilimitados</li>
           <li>✓ Hasta 20 documentos en memoria</li>
