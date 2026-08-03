@@ -156,22 +156,49 @@
   </div>
     </div>
   </div>
-  <!-- Modal pago crypto -->
+  <!-- Modal pago -->
   <div id="crypto-modal" hidden role="dialog" aria-modal="true">
     <div id="crypto-modal-box">
       <button type="button" id="crypto-modal-close">✕</button>
       <div id="crypto-modal-icon"><img src="images/favicon.png" alt="HASH"></div>
       <h3>Activar HASH Pro</h3>
-      <p id="crypto-modal-desc">Enviá USDT (TRC20) a esta dirección para activar tu plan.</p>
-      <img id="crypto-qr" src="images/trc20.png" alt="QR USDT TRC20">
-      <div id="crypto-address-row">
-        <span id="crypto-address" data-real="TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
-        <button type="button" id="crypto-copy-btn">Copiar</button>
+      <p id="crypto-modal-desc">Elegí cómo querés pagar tu plan.</p>
+
+      <!-- Selector de método -->
+      <div id="payment-method-selector">
+        <button type="button" class="pay-method-btn active" data-method="usdt">₮ USDT</button>
+        <button type="button" class="pay-method-btn" data-method="paypal">PayPal</button>
+        <button type="button" class="pay-method-btn" data-method="mp">Mercado Pago</button>
       </div>
-      <p id="crypto-note">Solo red Tron (TRC20).</p>
+
+      <!-- USDT -->
+      <div id="pay-panel-usdt" class="pay-panel">
+        <img id="crypto-qr" src="images/trc20.png" alt="QR USDT TRC20">
+        <div id="crypto-address-row">
+          <span id="crypto-address" data-real="TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
+          <button type="button" id="crypto-copy-btn">Copiar</button>
+        </div>
+        <p id="crypto-note">Solo red Tron (TRC20). Enviá exactamente 10 USDT.</p>
+      </div>
+
+      <!-- PayPal -->
+      <div id="pay-panel-paypal" class="pay-panel" hidden>
+        <p class="pay-desc">Pagá $10 USD de forma segura con PayPal.</p>
+        <div id="paypal-container-VPXEFLL833YWN"></div>
+      </div>
+
+      <!-- Mercado Pago -->
+      <div id="pay-panel-mp" class="pay-panel" hidden>
+        <p class="pay-desc">Pagá con Mercado Pago. Aceptamos tarjetas y saldo.</p>
+        <button type="button" id="mp-pay-btn">Pagar con Mercado Pago</button>
+      </div>
+
       <a id="crypto-support-link" href="https://t.me/hashsupp_bot" target="_blank">¿Problemas? Contactá soporte</a>
     </div>
   </div>
+
+  <!-- PayPal SDK -->
+  <script src="https://www.paypal.com/sdk/js?client-id=BAA_RwSSwEfH3wEm_UCqcLBLdWJkjJI8TyXlrXjjHKXWfrMZ6xqeiL7BbLFokKtxclmxqPyqsE1CnW9Kuo&components=hosted-buttons&disable-funding=venmo&currency=USD"></script>
   
   <script src="js/app.js?v=1784946800"></script>
 </body>

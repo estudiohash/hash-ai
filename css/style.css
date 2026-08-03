@@ -2006,3 +2006,58 @@ body {
   color: var(--text-dim);
   padding: 4px 0;
 }
+
+/* ── Modal de pago ─────────────────────────────────────────────────────────── */
+#payment-method-selector {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+  justify-content: center;
+}
+
+.pay-method-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+
+.pay-method-btn:hover,
+.pay-method-btn.active {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
+.pay-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pay-desc {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+}
+
+#mp-pay-btn {
+  background: #009ee3;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+
+#mp-pay-btn:hover { opacity: 0.85; }
+#mp-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -876,6 +876,8 @@ function fallbackCopy(text, statusEl) {
   document.body.removeChild(ta);
 }
 
+let _paypalRendered = false;
+
 function showCryptoModal() {
   const modal = document.getElementById("crypto-modal");
   if (!modal) return;
@@ -892,12 +894,58 @@ function showCryptoModal() {
     }).catch(() => {});
   }
 
+  // Copiar wallet USDT
   const copyBtn = document.getElementById("crypto-copy-btn");
-  const status = document.getElementById("crypto-copy-status");
   const WALLET = "TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw";
-  copyBtn.onclick = () => {
-    fallbackCopy(WALLET, status);
-  };
+  if (copyBtn) copyBtn.onclick = () => fallbackCopy(WALLET, null);
+
+  // Selector de método de pago
+  const methodBtns = document.querySelectorAll(".pay-method-btn");
+  const panels = document.querySelectorAll(".pay-panel");
+
+  methodBtns.forEach(btn => {
+    btn.onclick = () => {
+      methodBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const method = btn.dataset.method;
+      panels.forEach(p => p.setAttribute("hidden", ""));
+      const panel = document.getElementById("pay-panel-" + method);
+      if (panel) panel.removeAttribute("hidden");
+
+      // Renderizar PayPal solo una vez
+      if (method === "paypal" && !_paypalRendered && window.paypal) {
+        _paypalRendered = true;
+        paypal.HostedButtons({ hostedButtonId: "VPXEFLL833YWN" }).render("#paypal-container-VPXEFLL833YWN");
+      }
+    };
+  });
+
+  // Mercado Pago
+  const mpBtn = document.getElementById("mp-pay-btn");
+  if (mpBtn) {
+    mpBtn.onclick = async () => {
+      mpBtn.disabled = true;
+      mpBtn.textContent = "Generando link...";
+      try {
+        const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 10, description: "HASH Pro" }),
+        });
+        const data = await res.json();
+        if (data.init_point) {
+          window.open(data.init_point, '_blank');
+        } else {
+          mpBtn.textContent = "Error, intentá de nuevo";
+        }
+      } catch {
+        mpBtn.textContent = "Error, intentá de nuevo";
+      } finally {
+        mpBtn.disabled = false;
+        setTimeout(() => { mpBtn.textContent = "Pagar con Mercado Pago"; }, 3000);
+      }
+    };
+  }
 }
 function initApp() {
   loadFronts();
