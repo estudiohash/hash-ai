@@ -839,7 +839,7 @@ function showUpgradeModal() {
     modal.innerHTML = `
       <div id="upgrade-modal-box">
         <button type="button" id="upgrade-modal-close">✕</button>
-        <div id="upgrade-modal-icon"><img src="images/favicon.png" alt="HASH" style="width:48px;height:48px;"></div>
+        <div id="upgrade-modal-icon">⚡</div>
         <h3 style="text-transform:uppercase;">Alcanzaste el límite del plan free</h3>
         <ul>
           <li>✓ Mensajes ilimitados</li>
