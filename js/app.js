@@ -875,7 +875,7 @@ function showUpgradeModal() {
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
       const btn = document.getElementById('upgrade-btn-mp');
       btn.disabled = true;
-      btn.querySelector('span:last-child').textContent = '...';
+      btn.style.opacity = '0.4';
       const token = getToken();
       try {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
@@ -884,10 +884,16 @@ function showUpgradeModal() {
           body: JSON.stringify({ amount: 5, description: "HASH Pro" }),
         });
         const data = await res.json();
-        if (data.init_point) window.open(data.init_point, '_blank');
+        if (data.init_point) {
+          if (/Mobi|Android/i.test(navigator.userAgent)) {
+            window.location.href = data.init_point;
+          } else {
+            window.open(data.init_point, '_blank');
+          }
+        }
       } catch { }
       btn.disabled = false;
-      btn.querySelector('span:last-child').textContent = 'Mercado Pago';
+      btn.style.opacity = '';
     });
 
     // USDT — despliega wallet inline
@@ -978,7 +984,11 @@ function showCryptoModal() {
         });
         const data = await res.json();
         if (data.init_point) {
-          window.open(data.init_point, '_blank');
+          if (/Mobi|Android/i.test(navigator.userAgent)) {
+            window.location.href = data.init_point;
+          } else {
+            window.open(data.init_point, '_blank');
+          }
         } else {
           mpBtn.textContent = "Error, intentá de nuevo";
         }
