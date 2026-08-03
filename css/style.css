@@ -2061,3 +2061,50 @@ body {
 
 #mp-pay-btn:hover { opacity: 0.85; }
 #mp-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Modal upgrade con botones de pago ────────────────────────────────────── */
+.upgrade-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--lime);
+  margin: 4px 0 12px;
+  text-align: center;
+}
+
+.upgrade-pay-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.upgrade-pay-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+  min-width: 80px;
+}
+
+.upgrade-pay-btn:hover {
+  border-color: var(--lime);
+  background: rgba(199,245,50,0.06);
+}
+
+.upgrade-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pay-icon { font-size: 1.4rem; }
+
+#upgrade-paypal-container {
+  display: none;
+  width: 100%;
+  margin-top: 8px;
+}

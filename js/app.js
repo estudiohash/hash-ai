@@ -842,18 +842,63 @@ function showUpgradeModal() {
         <div id="upgrade-modal-icon">⚡</div>
         <h3 style="text-transform:uppercase;">Alcanzaste el límite del plan free</h3>
         <ul>
-          <li>✓ Chats ilimitados</li>
+          <li>✓ Mensajes ilimitados</li>
           <li>✓ Hasta 20 documentos en memoria</li>
           <li>✓ Búsqueda semántica avanzada</li>
-          
         </ul>
-        <button type="button" id="upgrade-modal-cta">Abonar $10 USD</button>
+        <p class="upgrade-price">$10 USD / mes</p>
+        <div class="upgrade-pay-btns">
+          <button type="button" class="upgrade-pay-btn" id="upgrade-btn-paypal">
+            <span class="pay-icon">🅿️</span>
+            <span>PayPal</span>
+          </button>
+          <button type="button" class="upgrade-pay-btn" id="upgrade-btn-mp">
+            <span class="pay-icon">💳</span>
+            <span>Mercado Pago</span>
+          </button>
+          <button type="button" class="upgrade-pay-btn" id="upgrade-btn-usdt">
+            <span class="pay-icon">₮</span>
+            <span>USDT</span>
+          </button>
+        </div>
+        <div id="upgrade-paypal-container"></div>
       </div>
     `;
     document.body.appendChild(modal);
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.setAttribute('hidden', ''); });
     document.getElementById('upgrade-modal-close').addEventListener('click', () => modal.setAttribute('hidden', ''));
-    document.getElementById('upgrade-modal-cta').addEventListener('click', () => {
+
+    // PayPal
+    document.getElementById('upgrade-btn-paypal').addEventListener('click', () => {
+      const container = document.getElementById('upgrade-paypal-container');
+      container.style.display = container.style.display === 'block' ? 'none' : 'block';
+      if (container.style.display === 'block' && !container.dataset.rendered && window.paypal) {
+        container.dataset.rendered = '1';
+        paypal.HostedButtons({ hostedButtonId: "VPXEFLL833YWN" }).render("#upgrade-paypal-container");
+      }
+    });
+
+    // Mercado Pago
+    document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
+      const btn = document.getElementById('upgrade-btn-mp');
+      btn.disabled = true;
+      btn.querySelector('span:last-child').textContent = '...';
+      const token = getToken();
+      try {
+        const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 10, description: "HASH Pro" }),
+        });
+        const data = await res.json();
+        if (data.init_point) window.open(data.init_point, '_blank');
+      } catch { }
+      btn.disabled = false;
+      btn.querySelector('span:last-child').textContent = 'Mercado Pago';
+    });
+
+    // USDT
+    document.getElementById('upgrade-btn-usdt').addEventListener('click', () => {
       modal.setAttribute('hidden', '');
       showCryptoModal();
     });
