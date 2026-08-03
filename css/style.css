@@ -2108,3 +2108,44 @@ body {
   width: 100%;
   margin-top: 8px;
 }
+
+/* ── USDT panel inline ─────────────────────────────────────────────────── */
+#upgrade-usdt-panel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.03);
+}
+
+.usdt-wallet-label {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.usdt-wallet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usdt-wallet-addr {
+  font-size: 0.72rem;
+  color: var(--text);
+  word-break: break-all;
+  flex: 1;
+}
+
+#upgrade-usdt-copy {
+  background: none;
+  border: 1px solid var(--lime);
+  border-radius: var(--radius-sm);
+  color: var(--lime);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}

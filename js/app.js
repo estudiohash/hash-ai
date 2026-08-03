@@ -848,10 +848,10 @@ function showUpgradeModal() {
         </ul>
         <p class="upgrade-price">$10 USD / mes</p>
         <div class="upgrade-pay-btns">
-          <button type="button" class="upgrade-pay-btn" id="upgrade-btn-paypal">
+          <a class="upgrade-pay-btn" href="https://www.paypal.com/ncp/payment/VPXEFLL833YWN" target="_blank" rel="noopener">
             <span class="pay-icon">🅿️</span>
             <span>PayPal</span>
-          </button>
+          </a>
           <button type="button" class="upgrade-pay-btn" id="upgrade-btn-mp">
             <span class="pay-icon">💳</span>
             <span>Mercado Pago</span>
@@ -861,22 +861,18 @@ function showUpgradeModal() {
             <span>USDT</span>
           </button>
         </div>
-        <div id="upgrade-paypal-container"></div>
+        <div id="upgrade-usdt-panel" hidden>
+          <p class="usdt-wallet-label">Enviá exactamente <strong>10 USDT</strong> por red Tron (TRC20):</p>
+          <div class="usdt-wallet-row">
+            <span class="usdt-wallet-addr">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
+            <button type="button" id="upgrade-usdt-copy">Copiar</button>
+          </div>
+        </div>
       </div>
     `;
     document.body.appendChild(modal);
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.setAttribute('hidden', ''); });
     document.getElementById('upgrade-modal-close').addEventListener('click', () => modal.setAttribute('hidden', ''));
-
-    // PayPal
-    document.getElementById('upgrade-btn-paypal').addEventListener('click', () => {
-      const container = document.getElementById('upgrade-paypal-container');
-      container.style.display = container.style.display === 'block' ? 'none' : 'block';
-      if (container.style.display === 'block' && !container.dataset.rendered && window.paypal) {
-        container.dataset.rendered = '1';
-        paypal.HostedButtons({ hostedButtonId: "VPXEFLL833YWN" }).render("#upgrade-paypal-container");
-      }
-    });
 
     // Mercado Pago
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
@@ -897,10 +893,16 @@ function showUpgradeModal() {
       btn.querySelector('span:last-child').textContent = 'Mercado Pago';
     });
 
-    // USDT
+    // USDT — despliega wallet inline
     document.getElementById('upgrade-btn-usdt').addEventListener('click', () => {
-      modal.setAttribute('hidden', '');
-      showCryptoModal();
+      const panel = document.getElementById('upgrade-usdt-panel');
+      panel.hasAttribute('hidden') ? panel.removeAttribute('hidden') : panel.setAttribute('hidden', '');
+    });
+    document.getElementById('upgrade-usdt-copy').addEventListener('click', () => {
+      const btn = document.getElementById('upgrade-usdt-copy');
+      fallbackCopy('TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw', null);
+      btn.textContent = '✓';
+      setTimeout(() => { btn.textContent = 'Copiar'; }, 2000);
     });
   }
   modal.removeAttribute('hidden');
