@@ -859,7 +859,7 @@ function showUpgradeModal() {
           </button>
         </div>
         <div id="upgrade-usdt-panel" hidden>
-          <p class="usdt-wallet-label">Enviá exactamente <strong>10 USDT</strong> por red Tron (TRC20):</p>
+          <p class="usdt-wallet-label">Enviá exactamente <strong>5 USDT</strong> por red Tron (TRC20):</p>
           <div class="usdt-wallet-row">
             <span class="usdt-wallet-addr">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
             <button type="button" id="upgrade-usdt-copy">Copiar</button>
@@ -875,7 +875,7 @@ function showUpgradeModal() {
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
       const btn = document.getElementById('upgrade-btn-mp');
       btn.disabled = true;
-      btn.style.opacity = '0.4';
+      btn.querySelector('span:last-child').textContent = '...';
       const token = getToken();
       try {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
@@ -887,7 +887,7 @@ function showUpgradeModal() {
         if (data.init_point) window.open(data.init_point, '_blank');
       } catch { }
       btn.disabled = false;
-      btn.style.opacity = '';
+      btn.querySelector('span:last-child').textContent = 'Mercado Pago';
     });
 
     // USDT — despliega wallet inline
