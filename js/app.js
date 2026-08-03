@@ -875,7 +875,7 @@ function showUpgradeModal() {
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
       const btn = document.getElementById('upgrade-btn-mp');
       btn.disabled = true;
-      btn.querySelector('span:last-child').textContent = '...';
+      btn.style.opacity = '0.4';
       const token = getToken();
       try {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
@@ -887,7 +887,7 @@ function showUpgradeModal() {
         if (data.init_point) window.open(data.init_point, '_blank');
       } catch { }
       btn.disabled = false;
-      btn.querySelector('span:last-child').textContent = 'Mercado Pago';
+      btn.style.opacity = '';
     });
 
     // USDT — despliega wallet inline
