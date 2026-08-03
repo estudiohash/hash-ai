@@ -846,7 +846,7 @@ function showUpgradeModal() {
           <li>✓ Hasta 20 documentos en memoria</li>
           <li>✓ Búsqueda semántica avanzada</li>
         </ul>
-        <p class="upgrade-price">$5 USD <span class="upgrade-period">× 3 meses</span></p>
+        <p class="upgrade-price">$5 USD / mes</p>
         <div class="upgrade-pay-btns">
           <a class="upgrade-pay-btn" href="https://www.paypal.com/ncp/payment/VPXEFLL833YWN" target="_blank" rel="noopener">
             <span class="pay-icon">🅿️</span>
