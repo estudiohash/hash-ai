@@ -2172,5 +2172,5 @@ body {
   max-width: 72px;
   height: 32px;
   object-fit: contain;
-  filter: brightness(0) invert(1);
+  /* Sin filtro: los logos de PayPal, Mercado Pago y USDT muestran sus colores de marca */
 }
