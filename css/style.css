@@ -2165,3 +2165,12 @@ body {
   color: var(--text-dim);
   margin-left: 4px;
 }
+
+/* ── Logos de métodos de pago ─────────────────────────────────────────────── */
+.pay-logo {
+  width: 100%;
+  max-width: 72px;
+  height: 32px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
