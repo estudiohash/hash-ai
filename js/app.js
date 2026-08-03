@@ -839,7 +839,7 @@ function showUpgradeModal() {
     modal.innerHTML = `
       <div id="upgrade-modal-box">
         <button type="button" id="upgrade-modal-close">✕</button>
-        <div id="upgrade-modal-icon">⚡</div>
+        <div id="upgrade-modal-icon"><img src="images/favicon.png" alt="HASH" style="width:48px;height:48px;"></div>
         <h3 style="text-transform:uppercase;">Alcanzaste el límite del plan free</h3>
         <ul>
           <li>✓ Mensajes ilimitados</li>
@@ -849,15 +849,15 @@ function showUpgradeModal() {
         <p class="upgrade-price">$5 USD / mes</p>
         <div class="upgrade-pay-btns">
           <a class="upgrade-pay-btn" href="https://www.paypal.com/ncp/payment/VPXEFLL833YWN" target="_blank" rel="noopener">
-            <span class="pay-icon pay-icon--text">P</span>
+            <span class="pay-icon">🅿️</span>
             <span>PayPal</span>
           </a>
           <button type="button" class="upgrade-pay-btn" id="upgrade-btn-mp">
-            <span class="pay-icon pay-icon--text">MP</span>
+            <span class="pay-icon">💳</span>
             <span>Mercado Pago</span>
           </button>
           <button type="button" class="upgrade-pay-btn" id="upgrade-btn-usdt">
-            <span class="pay-icon pay-icon--text">₿</span>
+            <span class="pay-icon">₿</span>
             <span>Crypto</span>
           </button>
         </div>
