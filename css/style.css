@@ -1644,13 +1644,12 @@ body {
 
 #upgrade-modal-box h3 {
   font-family: "Inter", system-ui, sans-serif;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800;
   color: var(--lime);
   margin: 0;
-  letter-spacing: -0.01em;
-  line-height: 1.35;
-  text-transform: none;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
 }
 
 #upgrade-modal-box ul {
@@ -2107,7 +2106,14 @@ body {
 
 .upgrade-pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.pay-icon { font-size: 1.4rem; filter: hue-rotate(60deg) saturate(2) brightness(1.2); }
+.pay-icon { font-size: 1.4rem; }
+.pay-icon--text {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--lime);
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1;
+}
 
 #upgrade-paypal-container {
   display: none;
