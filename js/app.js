@@ -139,7 +139,7 @@ async function askHash(messages, onChunk) {
     },
     body: JSON.stringify({ messages, provider: activeProvider, chat_id: activeChatId || null, mode: activeMode }),
   });
-  if (res.status === 403) { showUpgradeModal(); return ''; }
+  if (res.status === 403) { showUpgradeModal(); appendMessage('hash', '⚠️ Alcanzaste el límite de mensajes del plan free. Tus mensajes se restablecen en 24 hs.'); return ''; }
   if (!res.ok) throw new Error('Error ' + res.status);
 
   const reader = res.body.getReader();
@@ -841,6 +841,7 @@ function showUpgradeModal() {
         <button type="button" id="upgrade-modal-close">✕</button>
         <div id="upgrade-modal-icon"><img src="images/favicon.png" alt="HASH" style="width:48px;height:48px;"></div>
         <h3 style="text-transform:uppercase;">Alcanzaste el límite del plan free</h3>
+        <p style="font-size:0.78rem;color:#aaa;margin:0 0 10px;">Tus mensajes se restablecen en 24 hs. O pasate a Pro y chateá sin límites.</p>
         <ul>
           <li>✓ Mensajes ilimitados</li>
           <li>✓ Hasta 20 documentos en memoria</li>
@@ -859,7 +860,11 @@ function showUpgradeModal() {
           </button>
         </div>
         <div id="upgrade-usdt-panel" hidden>
+<<<<<<< HEAD
           <p class="usdt-wallet-label">Enviá exactamente <strong>5 USDT</strong> por red Tron (TRC20):</p>
+=======
+          <p class="usdt-wallet-label">Enviá exactamente <strong>10 USDT</strong> por red Tron (TRC20):</p>
+>>>>>>> 968400b (cambios)
           <div class="usdt-wallet-row">
             <span class="usdt-wallet-addr">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
             <button type="button" id="upgrade-usdt-copy">Copiar</button>
@@ -875,7 +880,11 @@ function showUpgradeModal() {
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
       const btn = document.getElementById('upgrade-btn-mp');
       btn.disabled = true;
+<<<<<<< HEAD
       btn.style.opacity = '0.4';
+=======
+      btn.querySelector('span:last-child').textContent = '...';
+>>>>>>> 968400b (cambios)
       const token = getToken();
       try {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
@@ -884,6 +893,7 @@ function showUpgradeModal() {
           body: JSON.stringify({ amount: 5, description: "HASH Pro" }),
         });
         const data = await res.json();
+<<<<<<< HEAD
         if (data.init_point) {
           if (/Mobi|Android/i.test(navigator.userAgent)) {
             window.location.href = data.init_point;
@@ -894,6 +904,12 @@ function showUpgradeModal() {
       } catch { }
       btn.disabled = false;
       btn.style.opacity = '';
+=======
+        if (data.init_point) window.open(data.init_point, '_blank');
+      } catch { }
+      btn.disabled = false;
+      btn.querySelector('span:last-child').textContent = 'Mercado Pago';
+>>>>>>> 968400b (cambios)
     });
 
     // USDT — despliega wallet inline
@@ -984,11 +1000,15 @@ function showCryptoModal() {
         });
         const data = await res.json();
         if (data.init_point) {
+<<<<<<< HEAD
           if (/Mobi|Android/i.test(navigator.userAgent)) {
             window.location.href = data.init_point;
           } else {
             window.open(data.init_point, '_blank');
           }
+=======
+          window.open(data.init_point, '_blank');
+>>>>>>> 968400b (cambios)
         } else {
           mpBtn.textContent = "Error, intentá de nuevo";
         }
