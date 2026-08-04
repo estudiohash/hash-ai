@@ -373,6 +373,12 @@ async function saveMessage(texto, attachedFile) {
 
     messages[messages.length - 1].message = reply;
     messages[messages.length - 1].loading = false;
+    // Si la respuesta es vacía (ej: límite alcanzado), quitamos la burbuja
+    if (!reply) {
+      messages = messages.filter(m => m.id !== tempMsg.id);
+      renderMessages();
+      return;
+    }
     if (activeChatId) chatCache[activeChatId] = messages;
     renderMessages();
 
