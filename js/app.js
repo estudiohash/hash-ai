@@ -860,11 +860,7 @@ function showUpgradeModal() {
           </button>
         </div>
         <div id="upgrade-usdt-panel" hidden>
-<<<<<<< HEAD
-          <p class="usdt-wallet-label">Enviá exactamente <strong>5 USDT</strong> por red Tron (TRC20):</p>
-=======
           <p class="usdt-wallet-label">Enviá exactamente <strong>10 USDT</strong> por red Tron (TRC20):</p>
->>>>>>> 968400b (cambios)
           <div class="usdt-wallet-row">
             <span class="usdt-wallet-addr">TDPfrfpipHtENAANT2zkgLZNFmZE6MaJRw</span>
             <button type="button" id="upgrade-usdt-copy">Copiar</button>
@@ -880,11 +876,7 @@ function showUpgradeModal() {
     document.getElementById('upgrade-btn-mp').addEventListener('click', async () => {
       const btn = document.getElementById('upgrade-btn-mp');
       btn.disabled = true;
-<<<<<<< HEAD
-      btn.style.opacity = '0.4';
-=======
       btn.querySelector('span:last-child').textContent = '...';
->>>>>>> 968400b (cambios)
       const token = getToken();
       try {
         const res = await fetch(HASH_CLOUD_URL + '/payments/mercadopago/create', {
@@ -893,23 +885,10 @@ function showUpgradeModal() {
           body: JSON.stringify({ amount: 5, description: "HASH Pro" }),
         });
         const data = await res.json();
-<<<<<<< HEAD
-        if (data.init_point) {
-          if (/Mobi|Android/i.test(navigator.userAgent)) {
-            window.location.href = data.init_point;
-          } else {
-            window.open(data.init_point, '_blank');
-          }
-        }
-      } catch { }
-      btn.disabled = false;
-      btn.style.opacity = '';
-=======
         if (data.init_point) window.open(data.init_point, '_blank');
       } catch { }
       btn.disabled = false;
       btn.querySelector('span:last-child').textContent = 'Mercado Pago';
->>>>>>> 968400b (cambios)
     });
 
     // USDT — despliega wallet inline
@@ -1000,15 +979,7 @@ function showCryptoModal() {
         });
         const data = await res.json();
         if (data.init_point) {
-<<<<<<< HEAD
-          if (/Mobi|Android/i.test(navigator.userAgent)) {
-            window.location.href = data.init_point;
-          } else {
-            window.open(data.init_point, '_blank');
-          }
-=======
           window.open(data.init_point, '_blank');
->>>>>>> 968400b (cambios)
         } else {
           mpBtn.textContent = "Error, intentá de nuevo";
         }
