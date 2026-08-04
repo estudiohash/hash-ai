@@ -139,7 +139,7 @@ async function askHash(messages, onChunk) {
     },
     body: JSON.stringify({ messages, provider: activeProvider, chat_id: activeChatId || null, mode: activeMode }),
   });
-  if (res.status === 403) { showUpgradeModal(); appendMessage('hash', '⚠️ Alcanzaste el límite de mensajes del plan free. Tus mensajes se restablecen en 24 hs.'); return ''; }
+  if (res.status === 403) { showUpgradeModal(); return ''; }
   if (!res.ok) throw new Error('Error ' + res.status);
 
   const reader = res.body.getReader();
