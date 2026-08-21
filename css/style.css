@@ -2169,3 +2169,23 @@ body {
   object-fit: contain;
   padding: 10px;
 }
+
+/* ── Botón de llamada ─────────────────────────────────────────────────────── */
+#call-btn {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  margin: 3px 0 3px 3px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 150ms var(--ease);
+}
+
+#call-btn:hover {
+  color: var(--lime);
+}
