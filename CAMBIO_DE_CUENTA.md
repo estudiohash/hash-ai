@@ -96,6 +96,8 @@ Cada vez que creás una DB nueva en Railway, las tablas se crean sin algunas col
 ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
 ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;
+CREATE EXTENSION IF NOT EXISTS vector;
+ALTER TABLE memory_rows ADD COLUMN IF NOT EXISTS embedding vector(1024);
 ```
 
 > El `IF NOT EXISTS` evita que falle si la columna ya existe. Podés correr las tres siempre sin miedo.
@@ -106,7 +108,7 @@ ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;
 |---|---|
 | `memory_users` | `user_id`, `created_at`, `email`, `plan` |
 | `memory_documents` | `id`, `user_id`, `key`, `name`, `description`, `created_at`, `chat_id` |
-| `memory_rows` | `id`, `document_id`, `data` (JSONB), `created_at` |
+| `memory_rows` | `id`, `document_id`, `data` (JSONB), `created_at`, `embedding` vector(1024) |
 | `chats` | `chat_id`, `user_id`, `title`, `created_at`, `updated_at` |
 | `chat_messages` | `id`, `chat_id`, `role`, `content` (cifrado), `created_at` |
 | `credentials` | `user_id`, `refresh_token` (cifrado), `created_at` |
@@ -168,7 +170,9 @@ git config --global user.name "estudiohash"
 | `invalid_request` de Google | `GOOGLE_REDIRECT_URI` no coincide | Verificar variable en Railway vs Google Cloud |
 | `column "email" does not exist` | Columna faltante en DB | `ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS email TEXT;` |
 | `column "plan" does not exist` | Columna faltante en DB | `ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';` |
-| `column "chat_id" does not exist` | Columna faltante en DB | `ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;` |
+| `column "chat_id" does not exist` | Columna faltante en DB | `ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;
+CREATE EXTENSION IF NOT EXISTS vector;
+ALTER TABLE memory_rows ADD COLUMN IF NOT EXISTS embedding vector(1024);` |
 | Deploy con cuenta vieja en Vercel | Credenciales de Git en Windows | Eliminar `github.com` del Administrador de credenciales |
 | `fatal: 'origin' does not appear to be a git repository` | Remote no configurado | `git remote add origin https://github.com/estudiohash/hash-ai.git` |
 | `error: src refspec main does not match any` | Sin commits todavía | Hacer `git commit` antes del push |
@@ -187,4 +191,4 @@ hash-ai-main/
 
 ---
 
-*Última actualización: Agosto 2026 — columnas DB verificadas en producción*
+*Última actualización: Agosto 2026 — columnas DB + vector embedding verificadas en producción*
