@@ -1002,6 +1002,7 @@ function initApp() {
   loadFronts();
   initMessageActions();
   initVoiceChat();
+  initCallButton();
 
   // Selector de modo
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -1651,7 +1652,107 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 
-// ── Chat de voz (Realtime) ──────────────────────────────────────────────────
+// ── Chat de voz (enviar audio → respuesta en texto) ──────────────────────────
+
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+function initVoiceChat() {
+  const btn = document.getElementById('voice-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    else startRecording();
+  });
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); sendVoiceMessage(); };
+    mediaRecorder.start();
+    isRecording = true;
+    const btn = document.getElementById('voice-btn');
+    btn.textContent = '⏹';
+    btn.style.color = '#b4ff00';
+  } catch {
+    setSyncStatus('error', 'No se pudo acceder al micrófono.');
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder && isRecording) {
+    mediaRecorder.stop();
+    isRecording = false;
+    const btn = document.getElementById('voice-btn');
+    btn.textContent = '🎤';
+    btn.style.color = '';
+  }
+}
+
+async function sendVoiceMessage() {
+  if (!audioChunks.length) return;
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  const formData = new FormData();
+  formData.append('audio', blob, 'audio.webm');
+  if (activeChatId) formData.append('chat_id', activeChatId);
+
+  const tempUser = { id: crypto.randomUUID(), role: 'user', message: '🎤 Procesando...', created_at: new Date().toISOString() };
+  const tempHash = { id: crypto.randomUUID(), role: 'hash', message: '', created_at: new Date().toISOString(), loading: true };
+  messages = [...messages, tempUser, tempHash];
+  renderMessages();
+  setSyncStatus('loading', 'Hash está escuchando...');
+
+  try {
+    const token = getToken();
+    const res = await fetch(HASH_CLOUD_URL + '/chat/voice', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData,
+    });
+    if (res.status === 403) { showUpgradeModal(); return; }
+    if (!res.ok) throw new Error('Error ' + res.status);
+
+    const data = await res.json();
+    const transcript = data.transcript || '🎤 Mensaje de voz';
+    const reply = data.reply || '';
+    const chatId = data.chat_id;
+
+    if (chatId && !activeChatId) {
+      activeChatId = chatId;
+      activeFrontId = chatId;
+      localStorage.setItem('hash_active_chat', chatId);
+    }
+
+    tempUser.message = transcript;
+    tempHash.message = reply;
+    tempHash.loading = false;
+    if (activeChatId) chatCache[activeChatId] = messages;
+    renderMessages();
+
+    if (chatId && !FRONTS.find(f => f.chat_id === chatId)) {
+      FRONTS = [{ id: chatId, chat_id: chatId, name: transcript.slice(0, 50) }, ...FRONTS];
+      activeFrontId = chatId;
+      renderFrontList();
+      renderHeader();
+    }
+
+    const utterance = new SpeechSynthesisUtterance(reply);
+    utterance.lang = 'es-AR';
+    speechSynthesis.speak(utterance);
+    setSyncStatus('success', '');
+  } catch (err) {
+    messages = messages.filter(m => !m.loading);
+    renderMessages();
+    setSyncStatus('error', 'No se pudo enviar el audio.');
+  }
+}
+
+// ── Chat de voz en tiempo real (llamada) ─────────────────────────────────────
 
 let realtimeWs = null;
 let realtimeRecorder = null;
@@ -1660,41 +1761,30 @@ let realtimeAudioQueue = [];
 let realtimeIsPlaying = false;
 let realtimeAudioCtx = null;
 
-function initVoiceChat() {
-  const btn = document.getElementById('voice-btn');
+function initCallButton() {
+  const btn = document.getElementById('call-btn');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    if (realtimeWs && realtimeWs.readyState === WebSocket.OPEN) {
-      hangupCall();
-    } else {
-      startCall();
-    }
+    if (realtimeWs && realtimeWs.readyState === WebSocket.OPEN) hangupCall();
+    else startCall();
   });
 }
-
-// ── UI de llamada ─────────────────────────────────────────────────────────────
 
 function showCallScreen(state) {
   let screen = document.getElementById('call-screen');
   if (!screen) {
     screen = document.createElement('div');
     screen.id = 'call-screen';
-    screen.style.cssText = [
-      'position:fixed', 'inset:0', 'z-index:9999',
-      'background:#0a0a0a',
-      'display:flex', 'flex-direction:column',
-      'align-items:center', 'justify-content:center',
-      'gap:32px', 'font-family:inherit',
-    ].join(';');
+    screen.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;font-family:inherit;';
     screen.innerHTML = `
-      <div id="call-avatar" style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:2px solid #b4ff00;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">⚡</div>
+      <div style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:2px solid #b4ff00;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">⚡</div>
       <div style="text-align:center;">
         <div style="font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:0.1em;">HASH</div>
         <div id="call-status" style="font-size:0.85rem;color:#888;margin-top:4px;">Conectando...</div>
       </div>
       <canvas id="call-visualizer" width="280" height="60" style="opacity:0.7;"></canvas>
       <div id="call-transcript" style="max-width:320px;text-align:center;font-size:0.82rem;color:#aaa;min-height:40px;line-height:1.5;"></div>
-      <button id="call-hangup" style="width:64px;height:64px;border-radius:50%;background:#ff3b3b;border:none;cursor:pointer;font-size:1.6rem;color:#fff;display:flex;align-items:center;justify-content:center;">📵</button>
+      <button id="call-hangup" style="width:64px;height:64px;border-radius:50%;background:#ff3b3b;border:none;cursor:pointer;font-size:1.6rem;color:#fff;">📵</button>
     `;
     document.body.appendChild(screen);
     document.getElementById('call-hangup').onclick = hangupCall;
@@ -1720,8 +1810,6 @@ function updateCallTranscript(text) {
   if (el) el.textContent = text;
 }
 
-// ── Visualizador de onda ──────────────────────────────────────────────────────
-
 let visualizerAnim = null;
 let visualizerAnalyser = null;
 
@@ -1740,17 +1828,10 @@ function startVisualizer(analyser) {
       const data = new Uint8Array(visualizerAnalyser.frequencyBinCount);
       visualizerAnalyser.getByteTimeDomainData(data);
       const step = W / data.length;
-      data.forEach((v, i) => {
-        const x = i * step;
-        const y = (v / 128.0) * H / 2;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
+      data.forEach((v, i) => { const x = i * step, y = (v / 128.0) * H / 2; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
     } else {
       const t = Date.now() / 400;
-      for (let x = 0; x < W; x++) {
-        const y = H / 2 + Math.sin(x / 20 + t) * 6;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
+      for (let x = 0; x < W; x++) { const y = H / 2 + Math.sin(x / 20 + t) * 6; x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     }
     ctx.stroke();
     visualizerAnim = requestAnimationFrame(draw);
@@ -1764,106 +1845,67 @@ function stopVisualizer() {
   visualizerAnalyser = null;
 }
 
-// ── WebSocket + llamada ───────────────────────────────────────────────────────
-
 async function startCall() {
   const token = getToken();
   if (!token) return;
-
   showCallScreen('Conectando...');
-
   const wsUrl = HASH_CLOUD_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/chat/realtime';
   realtimeWs = new WebSocket(wsUrl);
-
   realtimeWs.onopen = async () => {
-    realtimeWs.send(JSON.stringify({
-      type: 'init',
-      token,
-      mode: activeMode,
-      chat_id: activeChatId || null,
-    }));
+    realtimeWs.send(JSON.stringify({ type: 'init', token, mode: activeMode, chat_id: activeChatId || null }));
     try {
       realtimeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       startMicCapture();
-    } catch (e) {
-      updateCallStatus('Sin acceso al micrófono');
-    }
+    } catch (e) { updateCallStatus('Sin acceso al micrófono'); }
   };
-
   realtimeWs.onmessage = (event) => {
     const msg = JSON.parse(event.data);
-
     if (msg.type === 'status') {
       const states = { listening: '🎤 Escuchando...', thinking: '💭 Pensando...', speaking: '🔊 Hablando...' };
       updateCallStatus(states[msg.state] || msg.state);
-      if (msg.state === 'listening') startMicCapture();
-      else stopMicCapture();
+      if (msg.state === 'listening') startMicCapture(); else stopMicCapture();
     }
-
-    if (msg.type === 'transcript') {
-      updateCallTranscript('"' + msg.text + '"');
-    }
-
+    if (msg.type === 'transcript') updateCallTranscript('"' + msg.text + '"');
     if (msg.type === 'reply_text') {
       const tempHash = { id: crypto.randomUUID(), role: 'hash', message: msg.text, created_at: new Date().toISOString() };
       messages = [...messages, tempHash];
       if (activeChatId) chatCache[activeChatId] = messages;
       renderMessages();
     }
-
     if (msg.type === 'audio') {
       const binary = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
       realtimeAudioQueue.push(binary.buffer);
       if (!realtimeIsPlaying) playNextAudioChunk();
     }
-
-    if (msg.type === 'done') {
-      if (msg.chat_id && !activeChatId) {
-        activeChatId = msg.chat_id;
-        activeFrontId = msg.chat_id;
-        localStorage.setItem('hash_active_chat', msg.chat_id);
-      }
+    if (msg.type === 'done' && msg.chat_id && !activeChatId) {
+      activeChatId = msg.chat_id; activeFrontId = msg.chat_id;
+      localStorage.setItem('hash_active_chat', msg.chat_id);
     }
-
-    if (msg.type === 'error') {
-      updateCallStatus('Error: ' + msg.message);
-    }
+    if (msg.type === 'error') updateCallStatus('Error: ' + msg.message);
   };
-
   realtimeWs.onclose = () => hangupCall();
   realtimeWs.onerror = () => { updateCallStatus('Error de conexión'); setTimeout(hangupCall, 1500); };
-
-  const btn = document.getElementById('voice-btn');
+  const btn = document.getElementById('call-btn');
   if (btn) { btn.textContent = '📵'; btn.style.color = '#ff3b3b'; }
 }
 
 function hangupCall() {
   stopMicCapture();
-  if (realtimeWs) {
-    try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {}
-    realtimeWs.close();
-    realtimeWs = null;
-  }
+  if (realtimeWs) { try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {} realtimeWs.close(); realtimeWs = null; }
   if (realtimeStream) { realtimeStream.getTracks().forEach(t => t.stop()); realtimeStream = null; }
-  realtimeAudioQueue = [];
-  realtimeIsPlaying = false;
+  realtimeAudioQueue = []; realtimeIsPlaying = false;
   hideCallScreen();
-  const btn = document.getElementById('voice-btn');
-  if (btn) { btn.textContent = '🎤'; btn.style.color = ''; }
+  const btn = document.getElementById('call-btn');
+  if (btn) { btn.textContent = '📞'; btn.style.color = ''; }
   loadFronts();
 }
-
-// ── Captura de micrófono por turnos ──────────────────────────────────────────
 
 function startMicCapture() {
   if (!realtimeStream || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
   if (realtimeRecorder && realtimeRecorder.state === 'recording') return;
-
   realtimeRecorder = new MediaRecorder(realtimeStream, { mimeType: 'audio/webm' });
   const chunks = [];
-
   realtimeRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
   realtimeRecorder.onstop = async () => {
     if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN || !chunks.length) return;
     const blob = new Blob(chunks, { type: 'audio/webm' });
@@ -1872,19 +1914,14 @@ function startMicCapture() {
     realtimeWs.send(JSON.stringify({ type: 'audio', data: base64 }));
     realtimeWs.send(JSON.stringify({ type: 'end_audio' }));
   };
-
   realtimeRecorder.start();
-  setTimeout(() => {
-    if (realtimeRecorder && realtimeRecorder.state === 'recording') realtimeRecorder.stop();
-  }, 4000);
+  setTimeout(() => { if (realtimeRecorder && realtimeRecorder.state === 'recording') realtimeRecorder.stop(); }, 4000);
 }
 
 function stopMicCapture() {
   if (realtimeRecorder && realtimeRecorder.state === 'recording') realtimeRecorder.stop();
   realtimeRecorder = null;
 }
-
-// ── Reproducción de audio ─────────────────────────────────────────────────────
 
 async function playNextAudioChunk() {
   if (!realtimeAudioQueue.length) { realtimeIsPlaying = false; return; }
@@ -1902,8 +1939,5 @@ async function playNextAudioChunk() {
     startVisualizer(analyser);
     source.onended = () => playNextAudioChunk();
     source.start(0);
-  } catch (e) {
-    console.error('Error reproduciendo audio:', e);
-    playNextAudioChunk();
-  }
+  } catch (e) { console.error('Error reproduciendo audio:', e); playNextAudioChunk(); }
 }
