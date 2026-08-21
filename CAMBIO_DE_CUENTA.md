@@ -86,10 +86,30 @@ En el nuevo proyecto de Railway → tu servicio → Variables, configurá todas 
    ```
 6. Guardar → copiá el `Client ID` y `Client Secret` → pegarlos en Railway (Paso 3)
 
-> ⚠️ Si la tabla `memory_users` no tiene la columna `email`, ejecutá en Railway → Postgres → Query:
-> ```sql
-> ALTER TABLE memory_users ADD COLUMN email TEXT;
-> ```
+---
+
+## PASO 4.5 — Corregir columnas faltantes en la DB ⚠️ CRÍTICO
+
+Cada vez que creás una DB nueva en Railway, las tablas se crean sin algunas columnas que el código necesita. **Ejecutá siempre estas queries** en Railway → tu Postgres → **Query**, antes de probar la app:
+
+```sql
+ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';
+ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;
+```
+
+> El `IF NOT EXISTS` evita que falle si la columna ya existe. Podés correr las tres siempre sin miedo.
+
+### Estructura completa de tablas conocidas
+
+| Tabla | Columnas requeridas |
+|---|---|
+| `memory_users` | `user_id`, `created_at`, `email`, `plan` |
+| `memory_documents` | `id`, `user_id`, `key`, `name`, `description`, `created_at`, `chat_id` |
+| `memory_rows` | `id`, `document_id`, `data` (JSONB), `created_at` |
+| `chats` | `chat_id`, `user_id`, `title`, `created_at`, `updated_at` |
+| `chat_messages` | `id`, `chat_id`, `role`, `content` (cifrado), `created_at` |
+| `credentials` | `user_id`, `refresh_token` (cifrado), `created_at` |
 
 ---
 
@@ -146,7 +166,9 @@ git config --global user.name "estudiohash"
 | `404 Not Found` en Railway | URL del backend incorrecta en `app.js` | Actualizar `HASH_CLOUD_URL` en `js/app.js` |
 | `CSP error` en consola del browser | URL vieja en `vercel.json` | Actualizar `connect-src` en `vercel.json` |
 | `invalid_request` de Google | `GOOGLE_REDIRECT_URI` no coincide | Verificar variable en Railway vs Google Cloud |
-| `Internal Server Error` al loguear | Columna `email` faltante en DB | Ejecutar `ALTER TABLE memory_users ADD COLUMN email TEXT;` |
+| `column "email" does not exist` | Columna faltante en DB | `ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS email TEXT;` |
+| `column "plan" does not exist` | Columna faltante en DB | `ALTER TABLE memory_users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'free';` |
+| `column "chat_id" does not exist` | Columna faltante en DB | `ALTER TABLE memory_documents ADD COLUMN IF NOT EXISTS chat_id TEXT;` |
 | Deploy con cuenta vieja en Vercel | Credenciales de Git en Windows | Eliminar `github.com` del Administrador de credenciales |
 | `fatal: 'origin' does not appear to be a git repository` | Remote no configurado | `git remote add origin https://github.com/estudiohash/hash-ai.git` |
 | `error: src refspec main does not match any` | Sin commits todavía | Hacer `git commit` antes del push |
@@ -165,4 +187,4 @@ hash-ai-main/
 
 ---
 
-*Última actualización: Agosto 2026*
+*Última actualización: Agosto 2026 — columnas DB verificadas en producción*
