@@ -1771,32 +1771,36 @@ function initCallButton() {
 }
 
 function showCallScreen(state) {
-  let screen = document.getElementById('call-screen');
-  if (!screen) {
-    screen = document.createElement('div');
-    screen.id = 'call-screen';
-    screen.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;font-family:inherit;';
-    screen.innerHTML = `
-      <div style="width:96px;height:96px;border-radius:50%;background:#1a1a1a;border:2px solid #b4ff00;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">⚡</div>
-      <div style="text-align:center;">
-        <div style="font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:0.1em;">HASH</div>
-        <div id="call-status" style="font-size:0.85rem;color:#888;margin-top:4px;">Conectando...</div>
+  let overlay = document.getElementById('call-screen');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'call-screen';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;font-family:inherit;';
+    overlay.innerHTML = `
+      <div style="background:#111;border:1px solid #222;border-radius:20px;padding:36px 28px;display:flex;flex-direction:column;align-items:center;gap:20px;width:300px;max-width:90vw;position:relative;">
+        <button id="call-close" style="position:absolute;top:12px;right:14px;background:none;border:none;color:#555;font-size:1.1rem;cursor:pointer;">✕</button>
+        <div style="width:80px;height:80px;border-radius:50%;background:#1a1a1a;border:2px solid #b4ff00;display:flex;align-items:center;justify-content:center;font-size:2rem;">⚡</div>
+        <div style="text-align:center;">
+          <div style="font-size:1.2rem;font-weight:700;color:#fff;letter-spacing:0.1em;">HASH</div>
+          <div id="call-status" style="font-size:0.82rem;color:#888;margin-top:4px;">Conectando...</div>
+        </div>
+        <canvas id="call-visualizer" width="240" height="48" style="opacity:0.7;"></canvas>
+        <div id="call-transcript" style="text-align:center;font-size:0.8rem;color:#aaa;min-height:36px;line-height:1.5;"></div>
+        <button id="call-hangup" style="width:56px;height:56px;border-radius:50%;background:#ff3b3b;border:none;cursor:pointer;font-size:1.4rem;color:#fff;">📵</button>
       </div>
-      <canvas id="call-visualizer" width="280" height="60" style="opacity:0.7;"></canvas>
-      <div id="call-transcript" style="max-width:320px;text-align:center;font-size:0.82rem;color:#aaa;min-height:40px;line-height:1.5;"></div>
-      <button id="call-hangup" style="width:64px;height:64px;border-radius:50%;background:#ff3b3b;border:none;cursor:pointer;font-size:1.6rem;color:#fff;">📵</button>
     `;
-    document.body.appendChild(screen);
+    document.body.appendChild(overlay);
     document.getElementById('call-hangup').onclick = hangupCall;
+    document.getElementById('call-close').onclick = hangupCall;
   }
-  screen.removeAttribute('hidden');
+  overlay.removeAttribute('hidden');
   updateCallStatus(state || 'Conectando...');
   startVisualizer();
 }
 
 function hideCallScreen() {
-  const screen = document.getElementById('call-screen');
-  if (screen) screen.setAttribute('hidden', '');
+  const overlay = document.getElementById('call-screen');
+  if (overlay) overlay.setAttribute('hidden', '');
   stopVisualizer();
 }
 
