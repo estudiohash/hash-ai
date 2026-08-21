@@ -1792,6 +1792,9 @@ function showCallScreen(state) {
     document.body.appendChild(overlay);
     document.getElementById('call-hangup').onclick = hangupCall;
     document.getElementById('call-close').onclick = hangupCall;
+  } else {
+    document.getElementById('call-hangup').onclick = hangupCall;
+    document.getElementById('call-close').onclick = hangupCall;
   }
   overlay.removeAttribute('hidden');
   updateCallStatus(state || 'Conectando...');
