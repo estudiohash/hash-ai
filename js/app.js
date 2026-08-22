@@ -1854,19 +1854,20 @@ async function startCall() {
   showCallScreen('Conectando...');
   const wsUrl = HASH_CLOUD_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/chat/realtime';
   realtimeWs = new WebSocket(wsUrl);
+
   realtimeWs.onopen = async () => {
     realtimeWs.send(JSON.stringify({ type: 'init', token, mode: activeMode, chat_id: activeChatId || null }));
     try {
-      realtimeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      realtimeStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 } });
       startMicCapture();
     } catch (e) { updateCallStatus('Sin acceso al micrófono'); }
   };
+
   realtimeWs.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === 'status') {
       const states = { listening: '🎤 Escuchando...', thinking: '💭 Pensando...', speaking: '🔊 Hablando...' };
       updateCallStatus(states[msg.state] || msg.state);
-      if (msg.state === 'listening') startMicCapture(); else stopMicCapture();
     }
     if (msg.type === 'transcript') updateCallTranscript('"' + msg.text + '"');
     if (msg.type === 'reply_text') {
@@ -1886,6 +1887,7 @@ async function startCall() {
     }
     if (msg.type === 'error') updateCallStatus('Error: ' + msg.message);
   };
+
   realtimeWs.onclose = () => hangupCall();
   realtimeWs.onerror = () => { updateCallStatus('Error de conexión'); setTimeout(hangupCall, 1500); };
   const btn = document.getElementById('call-btn');
@@ -1905,25 +1907,28 @@ function hangupCall() {
 
 function startMicCapture() {
   if (!realtimeStream || !realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
-  if (realtimeRecorder && realtimeRecorder.state === 'recording') return;
-  realtimeRecorder = new MediaRecorder(realtimeStream, { mimeType: 'audio/webm' });
-  const chunks = [];
-  realtimeRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-  realtimeRecorder.onstop = async () => {
-    if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN || !chunks.length) return;
-    const blob = new Blob(chunks, { type: 'audio/webm' });
-    const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  if (realtimeRecorder) return;
+  // Usar AudioWorklet/ScriptProcessor para enviar PCM16 raw a OpenAI Realtime
+  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
+  const source = realtimeAudioCtx.createMediaStreamSource(realtimeStream);
+  const processor = realtimeAudioCtx.createScriptProcessor(4096, 1, 1);
+  processor.onaudioprocess = (e) => {
+    if (!realtimeWs || realtimeWs.readyState !== WebSocket.OPEN) return;
+    const float32 = e.inputBuffer.getChannelData(0);
+    const pcm16 = new Int16Array(float32.length);
+    for (let i = 0; i < float32.length; i++) {
+      pcm16[i] = Math.max(-32768, Math.min(32767, Math.round(float32[i] * 32767)));
+    }
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
     realtimeWs.send(JSON.stringify({ type: 'audio', data: base64 }));
-    realtimeWs.send(JSON.stringify({ type: 'end_audio' }));
   };
-  realtimeRecorder.start();
-  setTimeout(() => { if (realtimeRecorder && realtimeRecorder.state === 'recording') realtimeRecorder.stop(); }, 4000);
+  source.connect(processor);
+  processor.connect(realtimeAudioCtx.destination);
+  realtimeRecorder = { source, processor, stop: () => { processor.disconnect(); source.disconnect(); } };
 }
 
 function stopMicCapture() {
-  if (realtimeRecorder && realtimeRecorder.state === 'recording') realtimeRecorder.stop();
-  realtimeRecorder = null;
+  if (realtimeRecorder) { try { realtimeRecorder.stop(); } catch {} realtimeRecorder = null; }
 }
 
 async function playNextAudioChunk() {
