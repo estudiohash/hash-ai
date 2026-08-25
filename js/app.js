@@ -1,4 +1,4 @@
-/**
+  /**
  * app.js — HASH AI
  * Fuente de verdad: HASH Cloud → Google Sheets del usuario.
  */
