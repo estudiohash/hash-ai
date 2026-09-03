@@ -762,11 +762,14 @@ async function speakMessage(btn, text) {
     const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    audio.playbackRate = ttsPlaybackRate;
+    const applyRate = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.oncanplay = applyRate;
+    audio.onplaying = applyRate;
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
     audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     await audio.play();
+    applyRate();
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
@@ -783,12 +786,15 @@ async function playChunks(chunks, btn) {
     const blob = new Blob([merged], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    audio.playbackRate = ttsPlaybackRate;
+    const applyRate = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.oncanplay = applyRate;
+    audio.onplaying = applyRate;
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
 
     audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     await audio.play();
+    applyRate();
   } catch {
     stopSpeaking(btn);
   }
