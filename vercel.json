@@ -6,7 +6,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; connect-src 'self' https://hash-cloud-production-81f8.up.railway.app wss://hash-cloud-production-81f8.up.railway.app; script-src 'self' 'unsafe-inline' https://www.paypal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-ancestors 'none';"
+          "value": "default-src 'self'; connect-src 'self' https://hash-cloud-production-81f8.up.railway.app wss://hash-cloud-production-81f8.up.railway.app; script-src 'self' 'unsafe-inline' https://www.paypal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-ancestors 'none'; media-src 'self' blob:;"
         }
       ]
     }
