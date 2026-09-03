@@ -1994,11 +1994,16 @@ async function playNextAudioChunk() {
   if (!realtimeAudioQueue.length) { realtimeIsPlaying = false; return; }
   realtimeIsPlaying = true;
   const buffer = realtimeAudioQueue.shift();
-  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext();
+  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
   try {
-    const decoded = await realtimeAudioCtx.decodeAudioData(buffer);
+    // OpenAI Realtime devuelve PCM16 raw (little-endian, 24kHz, mono)
+    const pcm16 = new Int16Array(buffer);
+    const float32 = new Float32Array(pcm16.length);
+    for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
+    const audioBuffer = realtimeAudioCtx.createBuffer(1, float32.length, 24000);
+    audioBuffer.copyToChannel(float32, 0);
     const source = realtimeAudioCtx.createBufferSource();
-    source.buffer = decoded;
+    source.buffer = audioBuffer;
     const analyser = realtimeAudioCtx.createAnalyser();
     analyser.fftSize = 256;
     source.connect(analyser);
