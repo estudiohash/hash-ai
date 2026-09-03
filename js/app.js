@@ -741,7 +741,7 @@ async function speakMessage(btn, text) {
     const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'cedar' }),
+      body: JSON.stringify({ text, voice_id: 'marin' }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
     const arrayBuffer = await ttsRes.arrayBuffer();
