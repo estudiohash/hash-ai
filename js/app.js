@@ -754,15 +754,18 @@ async function speakMessage(btn, text) {
 
   try {
     const token = getToken();
+    const supportsMp3Stream = window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
+    const supportsAacStream = window.MediaSource && MediaSource.isTypeSupported('audio/mp4; codecs="mp4a.40.2"');
+    const audioFormat = supportsMp3Stream ? 'mp3' : (supportsAacStream ? 'aac' : 'mp3');
     const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'coral' }),
+      body: JSON.stringify({ text, voice_id: 'coral', format: audioFormat }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-    const supportsMediaSource = window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
-    if (supportsMediaSource) {
-      // Streaming: reproduce desde el primer chunk (Brave, Chrome, Firefox)
+    if (supportsMp3Stream || supportsAacStream) {
+      // Streaming: reproduce desde el primer chunk (Brave/Chrome = MP3, Safari/iOS = AAC)
+      const mimeType = supportsAacStream && !supportsMp3Stream ? 'audio/mp4; codecs="mp4a.40.2"' : 'audio/mpeg';
       const mediaSource = new MediaSource();
       const url = URL.createObjectURL(mediaSource);
       const audio = new Audio(url);
@@ -774,7 +777,7 @@ async function speakMessage(btn, text) {
       audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
       audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
       mediaSource.addEventListener('sourceopen', async () => {
-        const sb = mediaSource.addSourceBuffer('audio/mpeg');
+        const sb = mediaSource.addSourceBuffer(mimeType);
         const reader = ttsRes.body.getReader();
         const pump = async () => {
           const { done, value } = await reader.read();
@@ -787,7 +790,7 @@ async function speakMessage(btn, text) {
         pump();
       });
     } else {
-      // Fallback: descarga completa (Safari/iOS)
+      // Fallback: descarga completa
       const arrayBuffer = await ttsRes.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
