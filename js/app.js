@@ -691,9 +691,12 @@ const ICON_CHECK =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
 function messageActionsHtml() {
+  const rateLabel = ttsPlaybackRate === 1.0 ? '1×' : ttsPlaybackRate + '×';
+  const rateActive = ttsPlaybackRate !== 1.0 ? ' message-action-btn--active' : '';
   return (
     '<div class="message-actions">' +
       '<button type="button" class="message-action-btn message-action-btn--speak" aria-label="Escuchar mensaje">' + ICON_SPEAKER + '</button>' +
+      '<button type="button" class="message-action-btn message-action-btn--speed' + rateActive + '" aria-label="Velocidad de reproducción">' + rateLabel + '</button>' +
       '<button type="button" class="message-action-btn message-action-btn--copy" aria-label="Copiar mensaje">' + ICON_COPY + '</button>' +
     '</div>'
   );
@@ -702,6 +705,17 @@ function messageActionsHtml() {
 let speakingMessageId = null;
 let activeAudioCtx = null;
 let activeAudioSource = null;
+let ttsPlaybackRate = 1.0;
+const TTS_RATES = [1.0, 1.25, 1.5];
+
+function nextTtsRate() {
+  const idx = TTS_RATES.indexOf(ttsPlaybackRate);
+  ttsPlaybackRate = TTS_RATES[(idx + 1) % TTS_RATES.length];
+  document.querySelectorAll('.message-action-btn--speed').forEach(b => {
+    b.textContent = ttsPlaybackRate === 1.0 ? '1×' : ttsPlaybackRate + '×';
+    b.classList.toggle('message-action-btn--active', ttsPlaybackRate !== 1.0);
+  });
+}
 
 function stopSpeaking(btn) {
   if (activeAudioCtx) {
@@ -748,6 +762,7 @@ async function speakMessage(btn, text) {
     const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.playbackRate = ttsPlaybackRate;
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
     audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
@@ -768,6 +783,7 @@ async function playChunks(chunks, btn) {
     const blob = new Blob([merged], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.playbackRate = ttsPlaybackRate;
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
 
     audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
@@ -798,7 +814,8 @@ function initMessageActions() {
   list.addEventListener('click', (e) => {
     const speakBtn = e.target.closest('.message-action-btn--speak');
     const copyBtn = e.target.closest('.message-action-btn--copy');
-    if (!speakBtn && !copyBtn) return;
+    const speedBtn = e.target.closest('.message-action-btn--speed');
+    if (!speakBtn && !copyBtn && !speedBtn) return;
 
     const item = e.target.closest('.message-item');
     if (!item) return;
@@ -806,6 +823,7 @@ function initMessageActions() {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
 
+    if (speedBtn) { nextTtsRate(); return; }
     if (speakBtn) speakMessage(speakBtn, msg.message);
     if (copyBtn) copyMessage(copyBtn, msg.message);
   });
