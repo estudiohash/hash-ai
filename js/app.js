@@ -1912,6 +1912,14 @@ async function startCall() {
   if (!token) return;
   showCallScreen('Conectando...');
   const wsUrl = HASH_CLOUD_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/chat/realtime';
+
+  // Crear AudioContext en el gesto del usuario (requerido por política autoplay)
+  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') {
+    realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
+  } else if (realtimeAudioCtx.state === 'suspended') {
+    realtimeAudioCtx.resume();
+  }
+
   realtimeWs = new WebSocket(wsUrl);
 
   realtimeWs.onopen = async () => {
@@ -2004,12 +2012,18 @@ async function playNextAudioChunk() {
   if (!realtimeAudioQueue.length) { realtimeIsPlaying = false; return; }
   realtimeIsPlaying = true;
   const buffer = realtimeAudioQueue.shift();
-  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
+
+  // No crear AudioContext aquí — debe venir de startCall() (gesto del usuario)
+  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') { realtimeIsPlaying = false; return; }
+  if (realtimeAudioCtx.state === 'suspended') await realtimeAudioCtx.resume();
+
   try {
-    // OpenAI Realtime devuelve PCM16 raw (little-endian, 24kHz, mono)
     const pcm16 = new Int16Array(buffer);
     const float32 = new Float32Array(pcm16.length);
     for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
+
+    console.log('[audio] byteLength:', buffer.byteLength, '| samples:', pcm16.length, '| ctx.state:', realtimeAudioCtx.state, '| ctx.sampleRate:', realtimeAudioCtx.sampleRate);
+
     const audioBuffer = realtimeAudioCtx.createBuffer(1, float32.length, 24000);
     audioBuffer.copyToChannel(float32, 0);
     const source = realtimeAudioCtx.createBufferSource();
@@ -2019,7 +2033,7 @@ async function playNextAudioChunk() {
     source.connect(analyser);
     analyser.connect(realtimeAudioCtx.destination);
     startVisualizer(analyser);
-    source.onended = () => playNextAudioChunk();
+    source.onended = () => { console.log('[audio] chunk ended, queue:', realtimeAudioQueue.length); playNextAudioChunk(); };
     source.start(0);
-  } catch (e) { console.error('Error reproduciendo audio:', e); playNextAudioChunk(); }
+  } catch (e) { console.error('[audio] error en chunk:', e); playNextAudioChunk(); }
 }
