@@ -745,14 +745,27 @@ async function speakMessage(btn, text) {
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
     const audioBlob = await ttsRes.blob();
+    console.log('[TTS] blob recibido, size:', audioBlob.size, 'type:', audioBlob.type);
+    if (audioBlob.size === 0) throw new Error('TTS: blob vacío');
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(audioUrl); } };
     audio.onended = () => { URL.revokeObjectURL(audioUrl); stopSpeaking(btn); };
-    audio.onerror = () => { URL.revokeObjectURL(audioUrl); stopSpeaking(btn); };
-    audio.play();
+    audio.onerror = (e) => {
+      console.error('[TTS] audio.onerror:', e, audio.error);
+      URL.revokeObjectURL(audioUrl);
+      stopSpeaking(btn);
+    };
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => {
+        console.error('[TTS] play() rechazado:', e);
+        stopSpeaking(btn);
+      });
+    }
   } catch (err) {
-    console.warn('TTS falló:', err);
+    console.error('[TTS] falló:', err);
     stopSpeaking(btn);
   }
 }
