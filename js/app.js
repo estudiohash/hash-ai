@@ -1953,14 +1953,24 @@ async function startCall() {
   if (btn) { btn.textContent = '📵'; btn.style.color = '#ff3b3b'; }
 }
 
+let _hangingUp = false;
 function hangupCall() {
+  if (_hangingUp) return;
+  _hangingUp = true;
   stopMicCapture();
-  if (realtimeWs) { try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {} realtimeWs.close(); realtimeWs = null; }
+  if (realtimeWs) {
+    realtimeWs.onclose = null;
+    realtimeWs.onerror = null;
+    try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {}
+    try { realtimeWs.close(); } catch {}
+    realtimeWs = null;
+  }
   if (realtimeStream) { realtimeStream.getTracks().forEach(t => t.stop()); realtimeStream = null; }
   realtimeAudioQueue = []; realtimeIsPlaying = false;
   hideCallScreen();
   const btn = document.getElementById('call-btn');
   if (btn) { btn.textContent = '📞'; btn.style.color = ''; }
+  _hangingUp = false;
   loadFronts();
 }
 
