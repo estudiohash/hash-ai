@@ -760,7 +760,7 @@ async function speakMessage(btn, text) {
     const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'coral', format: audioFormat }),
+      body: JSON.stringify({ text, voice_id: 'cedar', format: audioFormat }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
     if (supportsMp3Stream || supportsAacStream) {
