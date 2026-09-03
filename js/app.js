@@ -705,12 +705,14 @@ function messageActionsHtml() {
 let speakingMessageId = null;
 let activeAudioCtx = null;
 let activeAudioSource = null;
+let activeAudioEl = null;
 let ttsPlaybackRate = 1.0;
 const TTS_RATES = [1.0, 1.25, 1.5];
 
 function nextTtsRate() {
   const idx = TTS_RATES.indexOf(ttsPlaybackRate);
   ttsPlaybackRate = TTS_RATES[(idx + 1) % TTS_RATES.length];
+  if (activeAudioEl) activeAudioEl.playbackRate = ttsPlaybackRate;
   document.querySelectorAll('.message-action-btn--speed').forEach(b => {
     b.textContent = ttsPlaybackRate === 1.0 ? '1×' : ttsPlaybackRate + '×';
     b.classList.toggle('message-action-btn--active', ttsPlaybackRate !== 1.0);
@@ -762,14 +764,15 @@ async function speakMessage(btn, text) {
     const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    const applyRate = () => { audio.playbackRate = ttsPlaybackRate; };
-    audio.oncanplay = applyRate;
-    audio.onplaying = applyRate;
-    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
-    audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
-    audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
+    activeAudioEl = audio;
+    audio.playbackRate = ttsPlaybackRate;
+    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
+    audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
     await audio.play();
-    applyRate();
+    audio.playbackRate = ttsPlaybackRate;
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
@@ -786,15 +789,16 @@ async function playChunks(chunks, btn) {
     const blob = new Blob([merged], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    const applyRate = () => { audio.playbackRate = ttsPlaybackRate; };
-    audio.oncanplay = applyRate;
-    audio.onplaying = applyRate;
-    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
+    activeAudioEl = audio;
+    audio.playbackRate = ttsPlaybackRate;
+    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
 
-    audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
-    audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
+    audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
     await audio.play();
-    applyRate();
+    audio.playbackRate = ttsPlaybackRate;
   } catch {
     stopSpeaking(btn);
   }
