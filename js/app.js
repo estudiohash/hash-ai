@@ -1912,14 +1912,6 @@ async function startCall() {
   if (!token) return;
   showCallScreen('Conectando...');
   const wsUrl = HASH_CLOUD_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/chat/realtime';
-
-  // Crear AudioContext en el gesto del usuario (requerido por política autoplay)
-  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') {
-    realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
-  } else if (realtimeAudioCtx.state === 'suspended') {
-    realtimeAudioCtx.resume();
-  }
-
   realtimeWs = new WebSocket(wsUrl);
 
   realtimeWs.onopen = async () => {
@@ -1944,8 +1936,11 @@ async function startCall() {
       renderMessages();
     }
     if (msg.type === 'audio') {
+      console.log('[audio] WS recibido, data.length:', msg.data ? msg.data.length : 0);
       const binary = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
+      console.log('[audio] bytes decodificados:', binary.length);
       realtimeAudioQueue.push(binary.buffer);
+      console.log('[audio] queue length:', realtimeAudioQueue.length, '| isPlaying:', realtimeIsPlaying);
       if (!realtimeIsPlaying) playNextAudioChunk();
     }
     if (msg.type === 'done' && msg.chat_id && !activeChatId) {
@@ -2013,19 +2008,25 @@ async function playNextAudioChunk() {
   realtimeIsPlaying = true;
   const buffer = realtimeAudioQueue.shift();
 
-  // No crear AudioContext aquí — debe venir de startCall() (gesto del usuario)
-  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') { realtimeIsPlaying = false; return; }
-  if (realtimeAudioCtx.state === 'suspended') await realtimeAudioCtx.resume();
+  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') {
+    realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
+  }
+  console.log('[audio] AudioContext state:', realtimeAudioCtx.state, '| sampleRate:', realtimeAudioCtx.sampleRate);
+  if (realtimeAudioCtx.state === 'suspended') {
+    console.log('[audio] contexto suspendido, haciendo resume...');
+    await realtimeAudioCtx.resume();
+    console.log('[audio] estado post-resume:', realtimeAudioCtx.state);
+  }
 
   try {
     const pcm16 = new Int16Array(buffer);
     const float32 = new Float32Array(pcm16.length);
     for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
 
-    console.log('[audio] byteLength:', buffer.byteLength, '| samples:', pcm16.length, '| ctx.state:', realtimeAudioCtx.state, '| ctx.sampleRate:', realtimeAudioCtx.sampleRate);
-
+    console.log('[audio] createBuffer samples:', float32.length, '| byteLength:', buffer.byteLength);
     const audioBuffer = realtimeAudioCtx.createBuffer(1, float32.length, 24000);
     audioBuffer.copyToChannel(float32, 0);
+
     const source = realtimeAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
     const analyser = realtimeAudioCtx.createAnalyser();
@@ -2033,7 +2034,16 @@ async function playNextAudioChunk() {
     source.connect(analyser);
     analyser.connect(realtimeAudioCtx.destination);
     startVisualizer(analyser);
-    source.onended = () => { console.log('[audio] chunk ended, queue:', realtimeAudioQueue.length); playNextAudioChunk(); };
+
+    source.onended = () => {
+      console.log('[audio] source.onended — queue restante:', realtimeAudioQueue.length);
+      playNextAudioChunk();
+    };
+
+    console.log('[audio] source.start(0)');
     source.start(0);
-  } catch (e) { console.error('[audio] error en chunk:', e); playNextAudioChunk(); }
+  } catch (e) {
+    console.error('[audio] error en chunk:', e);
+    playNextAudioChunk();
+  }
 }
