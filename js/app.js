@@ -736,12 +736,25 @@ async function speakMessage(btn, text) {
   btn.innerHTML = ICON_STOP;
   speakingMessageId = id;
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'es-AR';
-  utterance.onend = () => stopSpeaking(btn);
-  utterance.onerror = () => stopSpeaking(btn);
-  activeAudioCtx = { close: () => speechSynthesis.cancel() };
-  speechSynthesis.speak(utterance);
+  try {
+    const token = getToken();
+    const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice_id: 'cedar' }),
+    });
+    if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
+    const audioBlob = await ttsRes.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(audioUrl); } };
+    audio.onended = () => { URL.revokeObjectURL(audioUrl); stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(audioUrl); stopSpeaking(btn); };
+    audio.play();
+  } catch (err) {
+    console.warn('TTS falló:', err);
+    stopSpeaking(btn);
+  }
 }
 
 async function playChunks(chunks, btn) {
@@ -1742,10 +1755,23 @@ async function sendVoiceMessage() {
       renderHeader();
     }
 
-    const utterance = new SpeechSynthesisUtterance(reply);
-    utterance.lang = 'es-AR';
-    speechSynthesis.speak(utterance);
     setSyncStatus('success', '');
+    try {
+      const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: reply, voice_id: 'cedar' }),
+      });
+      if (ttsRes.ok) {
+        const audioBlob = await ttsRes.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.play();
+      }
+    } catch (ttsErr) {
+      console.warn('TTS falló, sin audio:', ttsErr);
+    }
   } catch (err) {
     messages = messages.filter(m => !m.loading);
     renderMessages();
