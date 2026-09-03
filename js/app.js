@@ -754,25 +754,35 @@ async function speakMessage(btn, text) {
 
   try {
     const token = getToken();
-    const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
+    const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, voice_id: 'coral' }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-    const arrayBuffer = await ttsRes.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
+    const mediaSource = new MediaSource();
+    const url = URL.createObjectURL(mediaSource);
     const audio = new Audio(url);
     activeAudioEl = audio;
     audio.playbackRate = ttsPlaybackRate;
-    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; audio.play(); };
     audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
     activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
     audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
     audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-    await audio.play();
-    audio.playbackRate = ttsPlaybackRate;
+    mediaSource.addEventListener('sourceopen', async () => {
+      const sb = mediaSource.addSourceBuffer('audio/mpeg');
+      const reader = ttsRes.body.getReader();
+      const pump = async () => {
+        const { done, value } = await reader.read();
+        if (done) { if (mediaSource.readyState === 'open') mediaSource.endOfStream(); return; }
+        if (sb.updating) await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+        sb.appendBuffer(value);
+        await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+        pump();
+      };
+      pump();
+    });
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
