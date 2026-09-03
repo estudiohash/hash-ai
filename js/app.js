@@ -745,14 +745,13 @@ async function speakMessage(btn, text) {
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
     const arrayBuffer = await ttsRes.arrayBuffer();
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-    const source = audioCtx.createBufferSource();
-    source.buffer = decoded;
-    source.connect(audioCtx.destination);
-    activeAudioCtx = { close: () => { try { source.stop(); audioCtx.close(); } catch {} } };
-    source.onended = () => { audioCtx.close(); stopSpeaking(btn); };
-    source.start(0);
+    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
+    audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
+    await audio.play();
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
