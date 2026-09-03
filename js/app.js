@@ -1700,6 +1700,7 @@ async function sendVoiceMessage() {
   const formData = new FormData();
   formData.append('audio', blob, 'audio.webm');
   if (activeChatId) formData.append('chat_id', activeChatId);
+  formData.append('mode', activeMode);
 
   const tempUser = { id: crypto.randomUUID(), role: 'user', message: '🎤 Procesando...', created_at: new Date().toISOString() };
   const tempHash = { id: crypto.randomUUID(), role: 'hash', message: '', created_at: new Date().toISOString(), loading: true };
