@@ -691,12 +691,9 @@ const ICON_CHECK =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
 function messageActionsHtml() {
-  const rateLabel = ttsPlaybackRate === 1.0 ? '1×' : ttsPlaybackRate + '×';
-  const rateActive = ttsPlaybackRate !== 1.0 ? ' message-action-btn--active' : '';
   return (
     '<div class="message-actions">' +
       '<button type="button" class="message-action-btn message-action-btn--speak" aria-label="Escuchar mensaje">' + ICON_SPEAKER + '</button>' +
-      '<button type="button" class="message-action-btn message-action-btn--speed' + rateActive + '" aria-label="Velocidad de reproducción">' + rateLabel + '</button>' +
       '<button type="button" class="message-action-btn message-action-btn--copy" aria-label="Copiar mensaje">' + ICON_COPY + '</button>' +
     '</div>'
   );
@@ -705,19 +702,6 @@ function messageActionsHtml() {
 let speakingMessageId = null;
 let activeAudioCtx = null;
 let activeAudioSource = null;
-let activeAudioEl = null;
-let ttsPlaybackRate = 1.0;
-const TTS_RATES = [1.0, 1.25, 1.5];
-
-function nextTtsRate() {
-  const idx = TTS_RATES.indexOf(ttsPlaybackRate);
-  ttsPlaybackRate = TTS_RATES[(idx + 1) % TTS_RATES.length];
-  if (activeAudioEl) activeAudioEl.playbackRate = ttsPlaybackRate;
-  document.querySelectorAll('.message-action-btn--speed').forEach(b => {
-    b.textContent = ttsPlaybackRate === 1.0 ? '1×' : ttsPlaybackRate + '×';
-    b.classList.toggle('message-action-btn--active', ttsPlaybackRate !== 1.0);
-  });
-}
 
 function stopSpeaking(btn) {
   if (activeAudioCtx) {
@@ -757,22 +741,18 @@ async function speakMessage(btn, text) {
     const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'coral' }),
+      body: JSON.stringify({ text, voice_id: 'marin' }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
     const arrayBuffer = await ttsRes.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    activeAudioEl = audio;
-    audio.playbackRate = ttsPlaybackRate;
-    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
-    audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
-    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
-    audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-    audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-    await audio.play();
-    audio.playbackRate = ttsPlaybackRate;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+    const source = audioCtx.createBufferSource();
+    source.buffer = decoded;
+    source.connect(audioCtx.destination);
+    activeAudioCtx = { close: () => { try { source.stop(); audioCtx.close(); } catch {} } };
+    source.onended = () => { audioCtx.close(); stopSpeaking(btn); };
+    source.start(0);
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
@@ -789,16 +769,11 @@ async function playChunks(chunks, btn) {
     const blob = new Blob([merged], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    activeAudioEl = audio;
-    audio.playbackRate = ttsPlaybackRate;
-    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
-    audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
-    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); } };
 
-    audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-    audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+    audio.onended = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(url); stopSpeaking(btn); };
     await audio.play();
-    audio.playbackRate = ttsPlaybackRate;
   } catch {
     stopSpeaking(btn);
   }
@@ -824,8 +799,7 @@ function initMessageActions() {
   list.addEventListener('click', (e) => {
     const speakBtn = e.target.closest('.message-action-btn--speak');
     const copyBtn = e.target.closest('.message-action-btn--copy');
-    const speedBtn = e.target.closest('.message-action-btn--speed');
-    if (!speakBtn && !copyBtn && !speedBtn) return;
+    if (!speakBtn && !copyBtn) return;
 
     const item = e.target.closest('.message-item');
     if (!item) return;
@@ -833,7 +807,6 @@ function initMessageActions() {
     const msg = messages.find(m => m.id === id);
     if (!msg) return;
 
-    if (speedBtn) { nextTtsRate(); return; }
     if (speakBtn) speakMessage(speakBtn, msg.message);
     if (copyBtn) copyMessage(copyBtn, msg.message);
   });
@@ -1994,16 +1967,11 @@ async function playNextAudioChunk() {
   if (!realtimeAudioQueue.length) { realtimeIsPlaying = false; return; }
   realtimeIsPlaying = true;
   const buffer = realtimeAudioQueue.shift();
-  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
+  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext();
   try {
-    // OpenAI Realtime devuelve PCM16 raw (little-endian, 24kHz, mono)
-    const pcm16 = new Int16Array(buffer);
-    const float32 = new Float32Array(pcm16.length);
-    for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
-    const audioBuffer = realtimeAudioCtx.createBuffer(1, float32.length, 24000);
-    audioBuffer.copyToChannel(float32, 0);
+    const decoded = await realtimeAudioCtx.decodeAudioData(buffer);
     const source = realtimeAudioCtx.createBufferSource();
-    source.buffer = audioBuffer;
+    source.buffer = decoded;
     const analyser = realtimeAudioCtx.createAnalyser();
     analyser.fftSize = 256;
     source.connect(analyser);
