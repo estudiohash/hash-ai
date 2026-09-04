@@ -754,90 +754,28 @@ async function speakMessage(btn, text) {
 
   try {
     const token = getToken();
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const supportsMp3Stream = window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
-
-    if (isIOS) {
-      // Safari/iOS: GET con token en query param, Safari streamea nativo
-      const params = new URLSearchParams({ text, token, voice_id: 'coral', format: 'mp3' });
-      const url = HASH_CLOUD_URL + '/chat/synthesize/stream?' + params.toString();
-      const audio = new Audio(url);
-      activeAudioEl = audio;
-      audio.playbackRate = ttsPlaybackRate;
-      audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; audio.play(); };
-      audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
-      activeAudioCtx = { close: () => { audio.pause(); activeAudioEl = null; } };
-      audio.onended = () => { activeAudioEl = null; stopSpeaking(btn); };
-      audio.onerror = () => { activeAudioEl = null; stopSpeaking(btn); };
-      audio.load();
-    } else if (supportsMp3Stream) {
-      // Brave/Chrome: diagnóstico + MediaSource streaming
-      const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice_id: 'coral', format: 'mp3' }),
-      });
-      console.log('[TTS] status:', ttsRes.status);
-      console.log('[TTS] content-type:', ttsRes.headers.get('content-type'));
-      console.log('[TTS] content-length:', ttsRes.headers.get('content-length'));
-      if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-      const mediaSource = new MediaSource();
-      const url = URL.createObjectURL(mediaSource);
-      const audio = new Audio(url);
-      activeAudioEl = audio;
-      audio.playbackRate = ttsPlaybackRate;
-      audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; audio.play(); };
-      audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
-      activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
-      audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-      audio.onerror = () => { console.error('[TTS] audio.error:', audio.error); URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-      mediaSource.addEventListener('sourceopen', async () => {
-        const sb = mediaSource.addSourceBuffer('audio/mpeg');
-        const reader = ttsRes.body.getReader();
-        let chunkIndex = 0;
-        const pump = async () => {
-          const { done, value } = await reader.read();
-          if (done) { if (mediaSource.readyState === 'open') mediaSource.endOfStream(); return; }
-          if (chunkIndex === 0) console.log('[TTS] primer chunk bytes:', value.length, '| magic:', Array.from(value.slice(0,4)).map(b=>b.toString(16)).join(' '));
-          console.log('[TTS] chunk', chunkIndex++, 'size:', value.length);
-          if (sb.updating) await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-          try {
-            sb.appendBuffer(value);
-            await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-          } catch(e) {
-            console.error('[TTS] appendBuffer error:', e.message, '| readyState:', mediaSource.readyState, '| audio.error:', audio.error);
-            return;
-          }
-          pump();
-        };
-        pump();
-      });
-    } else {
-      // Fallback: descarga completa
-      const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice_id: 'coral', format: 'mp3' }),
-      });
-      if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-      const arrayBuffer = await ttsRes.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      activeAudioEl = audio;
-      audio.playbackRate = ttsPlaybackRate;
-      audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
-      audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
-      activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
-      audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-      audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-      await audio.play();
-      audio.playbackRate = ttsPlaybackRate;
-    }
+    const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice_id: 'coral' }),
+    });
+    if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
+    const arrayBuffer = await ttsRes.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    activeAudioEl = audio;
+    audio.playbackRate = ttsPlaybackRate;
+    audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; };
+    audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
+    audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+    audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+    await audio.play();
+    audio.playbackRate = ttsPlaybackRate;
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
-
   }
 }
 
@@ -1998,11 +1936,8 @@ async function startCall() {
       renderMessages();
     }
     if (msg.type === 'audio') {
-      console.log('[audio] WS recibido, data.length:', msg.data ? msg.data.length : 0);
       const binary = Uint8Array.from(atob(msg.data), c => c.charCodeAt(0));
-      console.log('[audio] bytes decodificados:', binary.length);
       realtimeAudioQueue.push(binary.buffer);
-      console.log('[audio] queue length:', realtimeAudioQueue.length, '| isPlaying:', realtimeIsPlaying);
       if (!realtimeIsPlaying) playNextAudioChunk();
     }
     if (msg.type === 'done' && msg.chat_id && !activeChatId) {
@@ -2018,24 +1953,14 @@ async function startCall() {
   if (btn) { btn.textContent = '📵'; btn.style.color = '#ff3b3b'; }
 }
 
-let _hangingUp = false;
 function hangupCall() {
-  if (_hangingUp) return;
-  _hangingUp = true;
   stopMicCapture();
-  if (realtimeWs) {
-    realtimeWs.onclose = null;
-    realtimeWs.onerror = null;
-    try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {}
-    try { realtimeWs.close(); } catch {}
-    realtimeWs = null;
-  }
+  if (realtimeWs) { try { realtimeWs.send(JSON.stringify({ type: 'hangup' })); } catch {} realtimeWs.close(); realtimeWs = null; }
   if (realtimeStream) { realtimeStream.getTracks().forEach(t => t.stop()); realtimeStream = null; }
   realtimeAudioQueue = []; realtimeIsPlaying = false;
   hideCallScreen();
   const btn = document.getElementById('call-btn');
   if (btn) { btn.textContent = '📞'; btn.style.color = ''; }
-  _hangingUp = false;
   loadFronts();
 }
 
@@ -2069,26 +1994,14 @@ async function playNextAudioChunk() {
   if (!realtimeAudioQueue.length) { realtimeIsPlaying = false; return; }
   realtimeIsPlaying = true;
   const buffer = realtimeAudioQueue.shift();
-
-  if (!realtimeAudioCtx || realtimeAudioCtx.state === 'closed') {
-    realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
-  }
-  console.log('[audio] AudioContext state:', realtimeAudioCtx.state, '| sampleRate:', realtimeAudioCtx.sampleRate);
-  if (realtimeAudioCtx.state === 'suspended') {
-    console.log('[audio] contexto suspendido, haciendo resume...');
-    await realtimeAudioCtx.resume();
-    console.log('[audio] estado post-resume:', realtimeAudioCtx.state);
-  }
-
+  if (!realtimeAudioCtx) realtimeAudioCtx = new AudioContext({ sampleRate: 24000 });
   try {
+    // OpenAI Realtime devuelve PCM16 raw (little-endian, 24kHz, mono)
     const pcm16 = new Int16Array(buffer);
     const float32 = new Float32Array(pcm16.length);
     for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768.0;
-
-    console.log('[audio] createBuffer samples:', float32.length, '| byteLength:', buffer.byteLength);
     const audioBuffer = realtimeAudioCtx.createBuffer(1, float32.length, 24000);
     audioBuffer.copyToChannel(float32, 0);
-
     const source = realtimeAudioCtx.createBufferSource();
     source.buffer = audioBuffer;
     const analyser = realtimeAudioCtx.createAnalyser();
@@ -2096,16 +2009,7 @@ async function playNextAudioChunk() {
     source.connect(analyser);
     analyser.connect(realtimeAudioCtx.destination);
     startVisualizer(analyser);
-
-    source.onended = () => {
-      console.log('[audio] source.onended — queue restante:', realtimeAudioQueue.length);
-      playNextAudioChunk();
-    };
-
-    console.log('[audio] source.start(0)');
+    source.onended = () => playNextAudioChunk();
     source.start(0);
-  } catch (e) {
-    console.error('[audio] error en chunk:', e);
-    playNextAudioChunk();
-  }
+  } catch (e) { console.error('Error reproduciendo audio:', e); playNextAudioChunk(); }
 }
