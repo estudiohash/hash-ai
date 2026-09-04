@@ -754,18 +754,30 @@ async function speakMessage(btn, text) {
 
   try {
     const token = getToken();
-    const supportsMp3Stream = window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
-    const supportsAacStream = window.MediaSource && MediaSource.isTypeSupported('audio/mp4; codecs="mp4a.40.2"');
-    const audioFormat = supportsMp3Stream ? 'mp3' : (supportsAacStream ? 'aac' : 'mp3');
-    const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'marin', format: audioFormat }),
-    });
-    if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-    if (supportsMp3Stream || supportsAacStream) {
-      // Streaming: reproduce desde el primer chunk (Brave/Chrome = MP3, Safari/iOS = AAC)
-      const mimeType = supportsAacStream && !supportsMp3Stream ? 'audio/mp4; codecs="mp4a.40.2"' : 'audio/mpeg';
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const supportsMp3Stream = !isIOS && window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
+
+    if (isIOS) {
+      // Safari/iOS: streaming HTTP nativo con <audio src> + GET + token en query param
+      const params = new URLSearchParams({ text, token, voice_id: 'coral', format: 'mp3' });
+      const url = HASH_CLOUD_URL + '/chat/synthesize/stream?' + params.toString();
+      const audio = new Audio(url);
+      activeAudioEl = audio;
+      audio.playbackRate = ttsPlaybackRate;
+      audio.oncanplay = () => { audio.playbackRate = ttsPlaybackRate; audio.play(); };
+      audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
+      activeAudioCtx = { close: () => { audio.pause(); activeAudioEl = null; } };
+      audio.onended = () => { activeAudioEl = null; stopSpeaking(btn); };
+      audio.onerror = () => { activeAudioEl = null; stopSpeaking(btn); };
+      audio.load();
+    } else if (supportsMp3Stream) {
+      // Brave/Chrome: MediaSource streaming con MP3
+      const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice_id: 'coral', format: 'mp3' }),
+      });
+      if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
       const mediaSource = new MediaSource();
       const url = URL.createObjectURL(mediaSource);
       const audio = new Audio(url);
@@ -777,7 +789,7 @@ async function speakMessage(btn, text) {
       audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
       audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
       mediaSource.addEventListener('sourceopen', async () => {
-        const sb = mediaSource.addSourceBuffer(mimeType);
+        const sb = mediaSource.addSourceBuffer('audio/mpeg');
         const reader = ttsRes.body.getReader();
         const pump = async () => {
           const { done, value } = await reader.read();
@@ -791,6 +803,12 @@ async function speakMessage(btn, text) {
       });
     } else {
       // Fallback: descarga completa
+      const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice_id: 'coral', format: 'mp3' }),
+      });
+      if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
       const arrayBuffer = await ttsRes.arrayBuffer();
       const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
@@ -808,6 +826,7 @@ async function speakMessage(btn, text) {
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
+
   }
 }
 
