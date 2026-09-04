@@ -771,12 +771,15 @@ async function speakMessage(btn, text) {
       audio.onerror = () => { activeAudioEl = null; stopSpeaking(btn); };
       audio.load();
     } else if (supportsMp3Stream) {
-      // Brave/Chrome: MediaSource streaming con MP3
+      // Brave/Chrome: diagnóstico + MediaSource streaming
       const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize/stream', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice_id: 'coral', format: 'mp3' }),
       });
+      console.log('[TTS] status:', ttsRes.status);
+      console.log('[TTS] content-type:', ttsRes.headers.get('content-type'));
+      console.log('[TTS] content-length:', ttsRes.headers.get('content-length'));
       if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
       const mediaSource = new MediaSource();
       const url = URL.createObjectURL(mediaSource);
@@ -787,16 +790,24 @@ async function speakMessage(btn, text) {
       audio.onplaying = () => { audio.playbackRate = ttsPlaybackRate; };
       activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(url); activeAudioEl = null; } };
       audio.onended = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
-      audio.onerror = () => { URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
+      audio.onerror = () => { console.error('[TTS] audio.error:', audio.error); URL.revokeObjectURL(url); activeAudioEl = null; stopSpeaking(btn); };
       mediaSource.addEventListener('sourceopen', async () => {
         const sb = mediaSource.addSourceBuffer('audio/mpeg');
         const reader = ttsRes.body.getReader();
+        let chunkIndex = 0;
         const pump = async () => {
           const { done, value } = await reader.read();
           if (done) { if (mediaSource.readyState === 'open') mediaSource.endOfStream(); return; }
+          if (chunkIndex === 0) console.log('[TTS] primer chunk bytes:', value.length, '| magic:', Array.from(value.slice(0,4)).map(b=>b.toString(16)).join(' '));
+          console.log('[TTS] chunk', chunkIndex++, 'size:', value.length);
           if (sb.updating) await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
-          sb.appendBuffer(value);
-          await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+          try {
+            sb.appendBuffer(value);
+            await new Promise(r => sb.addEventListener('updateend', r, { once: true }));
+          } catch(e) {
+            console.error('[TTS] appendBuffer error:', e.message, '| readyState:', mediaSource.readyState, '| audio.error:', audio.error);
+            return;
+          }
           pump();
         };
         pump();
