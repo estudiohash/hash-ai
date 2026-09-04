@@ -755,9 +755,9 @@ async function speakMessage(btn, text) {
   try {
     const token = getToken();
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const supportsMp3Stream = !isIOS && window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
+    const supportsMp3Stream = window.MediaSource && MediaSource.isTypeSupported('audio/mpeg');
 
-    if (isIOS) {
+    if (isIOS && !supportsMp3Stream) {
       // Safari/iOS: streaming HTTP nativo con <audio src> + GET + token en query param
       const params = new URLSearchParams({ text, token, voice_id: 'coral', format: 'mp3' });
       const url = HASH_CLOUD_URL + '/chat/synthesize/stream?' + params.toString();
