@@ -741,18 +741,29 @@ async function speakMessage(btn, text) {
     const ttsRes = await fetch(HASH_CLOUD_URL + '/chat/synthesize', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice_id: 'marin' }),
+      body: JSON.stringify({ text, voice_id: 'cedar' }),
     });
     if (!ttsRes.ok) throw new Error('TTS error ' + ttsRes.status);
-    const arrayBuffer = await ttsRes.arrayBuffer();
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-    const source = audioCtx.createBufferSource();
-    source.buffer = decoded;
-    source.connect(audioCtx.destination);
-    activeAudioCtx = { close: () => { try { source.stop(); audioCtx.close(); } catch {} } };
-    source.onended = () => { audioCtx.close(); stopSpeaking(btn); };
-    source.start(0);
+    const audioBlob = await ttsRes.blob();
+    console.log('[TTS] blob recibido, size:', audioBlob.size, 'type:', audioBlob.type);
+    if (audioBlob.size === 0) throw new Error('TTS: blob vacío');
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.preload = 'auto';
+    activeAudioCtx = { close: () => { audio.pause(); URL.revokeObjectURL(audioUrl); } };
+    audio.onended = () => { URL.revokeObjectURL(audioUrl); stopSpeaking(btn); };
+    audio.onerror = (e) => {
+      console.error('[TTS] audio.onerror:', e, audio.error);
+      URL.revokeObjectURL(audioUrl);
+      stopSpeaking(btn);
+    };
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => {
+        console.error('[TTS] play() rechazado:', e);
+        stopSpeaking(btn);
+      });
+    }
   } catch (err) {
     console.error('[TTS] falló:', err);
     stopSpeaking(btn);
@@ -1765,14 +1776,11 @@ async function sendVoiceMessage() {
         body: JSON.stringify({ text: reply, voice_id: 'cedar' }),
       });
       if (ttsRes.ok) {
-        const arrayBuffer = await ttsRes.arrayBuffer();
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const decoded = await audioCtx.decodeAudioData(arrayBuffer);
-        const source = audioCtx.createBufferSource();
-        source.buffer = decoded;
-        source.connect(audioCtx.destination);
-        source.onended = () => audioCtx.close();
-        source.start(0);
+        const audioBlob = await ttsRes.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.play();
       }
     } catch (ttsErr) {
       console.warn('TTS falló, sin audio:', ttsErr);
